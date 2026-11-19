@@ -1,6 +1,10 @@
 # Cobalto for VS Code
 
-VS Code extension for [Cobalto](../README.md), the unit testing tool for COBOL by Abstracta. It adds the following to a project with a `cblt.json`:
+VS Code extension for [Cobalto](https://github.com/abstracta/cobalto#readme), the unit testing tool for COBOL by Abstracta: run the suites from the Test Explorer, see coverage in the gutter and debug a suite with COBOL names.
+
+![Cobalto in VS Code: a failing test case, a debugging session that steps into the program down to the defect, the fix, and the suites passing with coverage](https://raw.githubusercontent.com/abstracta/cobalto/main/vscode-cobalto/images/demo.gif)
+
+It adds the following to a project with a `cblt.json`:
 
 | Capability | What it does |
 |---|---|
@@ -10,18 +14,34 @@ VS Code extension for [Cobalto](../README.md), the unit testing tool for COBOL b
 | Coverage in the gutter | From `build/lcov.info`: executed and non-executed statements, and entries per paragraph; the status bar gives the covered statements and branches of the active file. A command shows or hides it. The "Run with coverage" profile of the Test Explorer also feeds VS Code's native Test Coverage view with statements, branches (each with its label: `THEN`, `ELSE`, `WHEN ...`, operand `true`/`false`, taken from `build/cov/map.json`) and paragraphs as declarations. |
 | Syntax of the `.cblt` DSL | TextMate grammar that extends COBOL with `TESTSUITE`, `TESTCASE`, `BEFORE-EACH`, `END-BEFORE`, `AFTER-EACH`, `END-AFTER`, `IGNORE`, `EXPECT`, `MOCK`, `END-MOCK`, `ON`, `VERIFY` and `PROGRAM`, plus folding per test case. |
 
-Verified on macOS arm64 with GnuCOBOL 3.2, the `lldb-dap` that ships with Xcode and VS Code 1.140.
+Verified on macOS arm64 with GnuCOBOL 3.2, the `lldb-dap` that ships with Xcode and VS Code 1.147.
 
 ## Requirements
 
 - A Cobalto project: a folder with `cblt.json` and the suites (`cobalto init` creates `cblt.json`, `src/` and `tests/`).
-- The Cobalto CLI installed (see the [reference](../docs/reference.md)). The extension looks for the `cobalto` executable in this order: the `cobalto.cliPath` setting, a virtual environment (`.venv`) in the project folder or in one above it, and the `PATH`.
+- The Cobalto CLI installed (see [Installation](#installation) and the [reference](https://github.com/abstracta/cobalto/blob/main/docs/reference.md)). The extension looks for the `cobalto` executable in this order: the `cobalto.cliPath` setting, a virtual environment (`.venv`) in the project folder or in one above it, and the `PATH`.
 - To debug: GnuCOBOL and `lldb-dap`. On macOS it comes with Xcode or with the Command Line Tools (`xcrun -f lldb-dap`); on Linux, with the `lldb` package of LLVM 18 or later. The path can be set in `cobalto.lldbDapPath`; the `lldb-dap.executable-path` setting of LLVM's LLDB DAP extension is honored too.
 - Recommended: a COBOL extension (for example `bitlang.cobol`) to highlight the `.cbl` files and to set breakpoints in them from the gutter. Cobalto only registers breakpoints for `.cblt` files, so as not to conflict with those extensions.
 
 ## Installation
 
-The extension is not published on the Marketplace yet; for now it is installed from its `.vsix`. From the repository:
+Install the extension from the Marketplace: search for "Cobalto" in the Extensions view, or from a terminal:
+
+```bash
+code --install-extension abstracta.vscode-cobalto
+```
+
+The extension runs the Cobalto CLI, which is installed separately. It needs Python 3.9 or later and, to run the suites on your machine, GnuCOBOL 3.x. From a clone of the [repository](https://github.com/abstracta/cobalto), in a virtual environment:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install .
+```
+
+The extension finds that `.venv` by itself when the project is the clone or a folder inside it; for a project elsewhere, set `cobalto.cliPath` to the `cobalto` executable inside it.
+
+To build the extension from source instead, from the repository:
 
 ```bash
 cd vscode-cobalto && npm install && npm run compile && npm run package
@@ -31,7 +51,7 @@ cd vscode-cobalto && npm install && npm run compile && npm run package
 code --install-extension vscode-cobalto-0.1.0.vsix
 ```
 
-On macOS, if `code` is not on the PATH: `"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" --install-extension vscode-cobalto-0.1.0.vsix`. Afterwards, reload the open windows (Developer: Reload Window).
+On macOS, if `code` is not on the PATH, use `"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"`. After installing from a `.vsix`, reload the open windows (Developer: Reload Window).
 
 The extension activates by itself when a folder that contains a `cblt.json` is opened (in subfolders too: if there are several projects, the Test Explorer shows them separately).
 
@@ -142,7 +162,7 @@ It checks the activation, the Test Explorer (suites, test cases, `IGNORE`, locat
 
 ## If the breakpoint does not hit
 
-- After installing or reinstalling the `.vsix`, reload the window (Developer: Reload Window): an open window keeps running the previous version.
+- After installing or updating the extension from a `.vsix`, reload the window (Developer: Reload Window): an open window keeps running the previous version.
 - Check that the session is of type `cobalto`: the status bar and the debug console say "Cobalto: debug X", and the "Cobalto" output channel shows lines `[dap] launch: ... line map yes`. If "(plain lldb-dap)" or "(CodeLLDB)" was launched, the breakpoints of the `.cblt` are not moved.
 - A gray breakpoint in the `.cblt` with a message on hover: `build/X.lines.json` is missing or the configuration does not set `suite`; run `cobalto debug --suite X` with the current CLI or use the "Cobalto: Debug suite" command.
 - If the window has a parent folder open (for example the root of this repository) and not the project folder, the `launch.json` in the project's `.vscode/` does not apply; use the "Cobalto: Debug suite" command (it picks the project and the suite) or open the project folder.
@@ -156,7 +176,6 @@ It checks the activation, the Test Explorer (suites, test cases, `IGNORE`, locat
 - Groups with `SYNC` and padding fall back to the earlier mode (only the fields with a descriptor).
 - Data breakpoints (watchpoints) on COBOL fields are not supported.
 - The highlighting of the `.cbl` files and the breakpoints in them depend on an installed COBOL extension.
-- The extension is not published on the Marketplace; for now it is installed from its `.vsix`.
 
 ## Development
 

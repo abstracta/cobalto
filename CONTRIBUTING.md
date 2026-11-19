@@ -26,11 +26,13 @@ A compiler is added with a profile, a JSON object that says how to compile and r
 You need Python 3.9 or later and GnuCOBOL 3.x (`brew install gnucobol` on macOS, the `gnucobol3` package on Debian and Ubuntu). From a clone:
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 python3 -m pip install -e .
 python3 tests/run.py
 ```
 
-The first command installs `cobalto` from the working copy. The second runs every layer of the CLI's tests in under a minute, and none of them needs Cobalto installed. [tests/README.md](tests/README.md) describes each layer and how to run one alone.
+The first three commands install `cobalto` from the working copy, in a virtual environment. The last one runs every layer of the CLI's tests in under a minute, and none of them needs Cobalto installed. [tests/README.md](tests/README.md) describes each layer and how to run one alone.
 
 For the VS Code extension you also need Node.js (CI uses version 22):
 
