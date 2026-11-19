@@ -1,0 +1,196 @@
+# Releases the CLI: the package on PyPI and the release on GitHub.
+#
+#   A pushed tag vX.Y.Z   builds, checks the package and publishes it to PyPI,
+#                         then creates the GitHub release with that version's
+#                         notes from CHANGELOG.md. The tag has to match the
+#                         version of the package, and the version needs a
+#                         dated section in CHANGELOG.md.
+#   Started by hand       on main, builds, checks and publishes to TestPyPI,
+#                         to rehearse a release. A version that is already
+#                         there is skipped.
+#   A pull request        that touches the packaging only builds and checks.
+#
+# Publishing uses Trusted Publishing (OIDC): the publishers set up on PyPI and
+# TestPyPI name this repository, this file and the environments "pypi" and
+# "testpypi", so no token is stored in the repository. Renaming this file or
+# an environment breaks them. The steps of a release are in CONTRIBUTING.md.
+#
+# The VS Code extension is released by publish.yml. Its tags, vscode-vX.Y.Z,
+# do not start this workflow.
+name: Release CLI
+
+on:
+  push:
+    tags: ["v[0-9]*"]
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - pyproject.toml
+      - README.md
+      - CHANGELOG.md
+      - .github/workflows/release.yml
+      - .github/scripts/release.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Check the version, the tag and the changelog
+        id: check
+        env:
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          if [ -n "$TAG" ]; then
+            version=$(python .github/scripts/release.py check --tag "$TAG")
+          else
+            version=$(python .github/scripts/release.py check)
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      # PyPI shows the README and does not resolve relative links: they are
+      # pointed at this tag (or commit) only in the copy that gets packaged.
+      - name: Absolute links in the README of the package
+        env:
+          REF: ${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
+        run: python .github/scripts/release.py readme "$REF"
+      - name: Build the sdist and the wheel
+        run: |
+          python -m pip install build==1.6.1 twine==7.0.0
+          python -m build
+      - name: Check the distributions
+        run: |
+          python -m twine check --strict dist/*
+          unzip -p dist/*.whl '*.dist-info/METADATA' > "$RUNNER_TEMP/METADATA"
+          python .github/scripts/release.py relative-links "$RUNNER_TEMP/METADATA"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  verify:
+    name: Install and run (Python ${{ matrix.python }})
+    needs: build
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.13"]
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      # gnucobol3 is GnuCOBOL 3.1.2, the stable branch in Ubuntu 24.04
+      - name: Install GnuCOBOL
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gnucobol3
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      # The wheel that will be published, in a clean environment, with a copy
+      # of tests/ and examples/ that has no src/ next to it: the example
+      # regression runs the installed package, not the working copy.
+      - name: The wheel runs the example regression
+        run: |
+          python -m venv "$RUNNER_TEMP/wheel"
+          "$RUNNER_TEMP/wheel/bin/python" -m pip install dist/*.whl
+          mkdir "$RUNNER_TEMP/copy"
+          cp -R tests examples "$RUNNER_TEMP/copy/"
+          cd "$RUNNER_TEMP/copy"
+          export PATH="$RUNNER_TEMP/wheel/bin:$PATH"
+          test "$(cobalto --version)" = "Cobalto $VERSION"
+          test "$(cblt --version)" = "Cobalto $VERSION"
+          python -c 'import cobalto, sys; assert cobalto.__file__.startswith(sys.prefix), cobalto.__file__'
+          python tests/examples/selftest.py
+      - name: The sdist installs and finds its COBOL core and profiles
+        run: |
+          python -m venv "$RUNNER_TEMP/sdist"
+          "$RUNNER_TEMP/sdist/bin/python" -m pip install dist/*.tar.gz
+          export PATH="$RUNNER_TEMP/sdist/bin:$PATH"
+          test "$(cobalto --version)" = "Cobalto $VERSION"
+          cp -R examples "$RUNNER_TEMP/sdist-examples"
+          cd "$RUNNER_TEMP/sdist-examples"
+          cobalto profiles
+          cobalto test --filter TSTDISC --no-run
+
+  pypi:
+    name: Publish to PyPI
+    if: github.ref_type == 'tag'
+    needs: [build, verify]
+    runs-on: ubuntu-24.04
+    environment:
+      name: pypi
+      url: https://pypi.org/project/cobalto/${{ needs.build.outputs.version }}/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@v1.14.3
+
+  testpypi:
+    name: Publish to TestPyPI
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: [build, verify]
+    runs-on: ubuntu-24.04
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/cobalto/${{ needs.build.outputs.version }}/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@v1.14.3
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+  github-release:
+    name: GitHub release
+    if: github.ref_type == 'tag'
+    needs: [build, pypi]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - name: Create the release with the notes of this version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          python3 .github/scripts/release.py notes "$TAG" > "$RUNNER_TEMP/notes.md"
+          gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "Cobalto $VERSION" --notes-file "$RUNNER_TEMP/notes.md"

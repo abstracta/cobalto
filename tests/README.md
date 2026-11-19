@@ -18,7 +18,7 @@ runs every layer of the CLI and ends with 0 when all of them pass; `python3 test
 
 The extension has its own: `npm run lint` and `npm test` in [`vscode-cobalto/`](../vscode-cobalto/), plus the checks against a debugger and inside VS Code that its [DEVELOPMENT.md](../vscode-cobalto/DEVELOPMENT.md) describes.
 
-[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs these layers on every push and pull request: the CLI ones on Linux and macOS, and the lint, unit tests and packaging of the extension.
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs these layers on every push and pull request: the CLI ones on Linux and macOS, and the lint, unit tests and packaging of the extension. [`.github/workflows/release.yml`](../.github/workflows/release.yml) builds the package, installs the wheel in a clean environment and runs the example regression with it, on the pull requests that touch the packaging and before every release.
 
 ## The examples are a demo, and they fail on purpose
 
