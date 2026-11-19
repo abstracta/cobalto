@@ -68,6 +68,21 @@ A change comes with its tests: a unit test for the module it touches, a scenario
 - Say what you verified and how: which layers you ran, with which compiler and version. If something could not be verified, say that too.
 - CI runs the test layers on Linux and macOS, and the lint, unit tests and packaging of the extension. It has to pass.
 
+## Releasing
+
+For maintainers. The CLI and the VS Code extension are released separately, each with its own version number and changelog.
+
+**The CLI** goes to PyPI from the [Release CLI](.github/workflows/release.yml) workflow, with Trusted Publishing, so no token is involved:
+
+1. In a pull request, raise `__version__` in `src/cobalto/__init__.py` and replace `Unreleased` in its section of [CHANGELOG.md](CHANGELOG.md) with the date of the release. Merge it.
+2. Optionally, rehearse: start the workflow by hand from the Actions tab, on `main`. It builds, checks and publishes to TestPyPI, and skips a version that is already there.
+3. Tag the merge commit and push the tag: `git tag vX.Y.Z`, then `git push origin vX.Y.Z`.
+4. The workflow checks that the tag matches the version and that its changelog section has a date, builds the package, installs it in a clean environment and runs the example regression with it. The publishing job runs in the `pypi` environment, which asks a maintainer to approve it. After PyPI, it creates the GitHub release with the notes from the changelog.
+
+PyPI does not accept the same version twice: a release that went out wrong is fixed with the next version.
+
+**The extension** is published from the [Publish VS Code extension](.github/workflows/publish.yml) workflow; its [DEVELOPMENT.md](vscode-cobalto/DEVELOPMENT.md#publishing) has the steps. Tag its releases as `vscode-vX.Y.Z`, which does not start the CLI's workflow.
+
 ## License
 
 Cobalto is licensed under [Apache-2.0](LICENSE). As section 5 of the license states, contributions you submit are under the same license.
