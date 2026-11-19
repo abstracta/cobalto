@@ -88,4 +88,4 @@ It checks the activation, the Test Explorer (suites, test cases, `IGNORE`, locat
 
 ## Publishing
 
-The [Publish](../.github/workflows/publish.yml) workflow publishes to the Visual Studio Marketplace with Trusted Publishing, so no token is involved. Raise `version` in `package.json` and `package-lock.json`, add the entry to [CHANGELOG.md](CHANGELOG.md), merge to `main` and start the workflow by hand from the Actions tab. The Marketplace rejects a version that is already published.
+The [Publish VS Code extension](../.github/workflows/publish.yml) workflow publishes to the Visual Studio Marketplace with Trusted Publishing, so no token is involved. Raise `version` in `package.json` and `package-lock.json`, add the entry to [CHANGELOG.md](CHANGELOG.md), merge to `main` and start the workflow by hand from the Actions tab. The Marketplace rejects a version that is already published.
