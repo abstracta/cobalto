@@ -6,3 +6,4 @@ tsconfig.json
 **/*.map
 out/test/**
 eslint.config.mjs
+images/**
