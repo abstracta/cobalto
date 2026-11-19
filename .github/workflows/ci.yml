@@ -4,7 +4,7 @@
 #              package installed with pip and run as a command.
 #   extension: lint, unit tests and packaging of the VS Code extension.
 # The checks that need a debugger or VS Code itself are run by hand; the
-# README of vscode-cobalto/ describes them.
+# vscode-cobalto/DEVELOPMENT.md describes them.
 name: CI
 
 on:

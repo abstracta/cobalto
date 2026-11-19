@@ -1,8 +1,8 @@
 {
   "name": "vscode-cobalto",
   "displayName": "Cobalto",
-  "description": "Unit testing for COBOL with Cobalto: Test Explorer, coverage in the gutter, debugging with COBOL names and syntax highlighting for the .cblt DSL",
-  "version": "0.1.0",
+  "description": "Unit testing for COBOL with Cobalto: Test Explorer, coverage in the gutter, debugging in COBOL terms and syntax highlighting for the .cblt DSL",
+  "version": "0.1.1",
   "publisher": "abstracta",
   "repository": {
     "type": "git",

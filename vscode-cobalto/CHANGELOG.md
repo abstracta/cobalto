@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- The Marketplace page is written for people who use the extension; how it works inside and how it is verified moved to `DEVELOPMENT.md` in the repository.
+- The installation steps create a virtual environment for the CLI.
+
 ## 0.1.0
 
 First version.

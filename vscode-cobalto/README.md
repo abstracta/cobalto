@@ -1,18 +1,18 @@
 # Cobalto for VS Code
 
-VS Code extension for [Cobalto](https://github.com/abstracta/cobalto#readme), the unit testing tool for COBOL by Abstracta: run the suites from the Test Explorer, see coverage in the gutter and debug a suite with COBOL names.
+Run, measure and debug COBOL unit tests without leaving the editor. This is the VS Code extension for [Cobalto](https://github.com/abstracta/cobalto#readme), the open source unit testing tool for COBOL by Abstracta.
 
 ![Cobalto in VS Code: a failing test case, a debugging session that steps into the program down to the defect, the fix, and the suites passing with coverage](https://raw.githubusercontent.com/abstracta/cobalto/main/vscode-cobalto/images/demo.gif)
 
-It adds the following to a project with a `cblt.json`:
+## Features
 
-| Capability | What it does |
+| Feature | What you get |
 |---|---|
-| Debugging with COBOL names | Debug type `cobalto`: compiles the suite with `-g` (`cobalto debug`), launches `lldb-dap` through its own proxy and shows `WORKING-STORAGE` and `LINKAGE` with their COBOL names and values formatted according to their PIC and usage; *step over* and *step into* advance from COBOL statement to COBOL statement; the frames of the generated C are dimmed; breakpoints set in the `.cblt` or in the original program are moved to the copy that is actually compiled. |
-| Test Explorer | Lists the `.cblt` suites and the COBOL tests without the DSL, with each `TESTCASE` at its file and line, runs `cobalto test --coverage` (the whole project or one suite) and shows the result per test case: passed, failed with expected and actual, `IGNORE`, aborted, with the `DISPLAY` output of each case. |
-| Another compiler in one click | The status bar shows the `cblt.json` profile the suites run with ("Cobalto: gnucobol"); one click opens the list of profiles with their descriptions and, when one is chosen, offers to run the suites. Same tests, another dialect, same view. |
-| Coverage in the gutter | From `build/lcov.info`: executed and non-executed statements, and entries per paragraph; the status bar gives the covered statements and branches of the active file. A command shows or hides it. The "Run with coverage" profile of the Test Explorer also feeds VS Code's native Test Coverage view with statements, branches (each with its label: `THEN`, `ELSE`, `WHEN ...`, operand `true`/`false`, taken from `build/cov/map.json`) and paragraphs as declarations. |
-| Syntax of the `.cblt` DSL | TextMate grammar that extends COBOL with `TESTSUITE`, `TESTCASE`, `BEFORE-EACH`, `END-BEFORE`, `AFTER-EACH`, `END-AFTER`, `IGNORE`, `EXPECT`, `MOCK`, `END-MOCK`, `ON`, `VERIFY` and `PROGRAM`, plus folding per test case. |
+| Test Explorer | The suites and their test cases in the Testing view. Run the whole project or one suite; a failing case shows expected and actual as a diff |
+| Coverage | Executed and non-executed statements in the gutter, entries per paragraph, and statements, branches and paragraphs in VS Code's Test Coverage view |
+| Debugging in COBOL terms | Breakpoints in the suite and in the program under test, one step per COBOL statement, fields shown with their COBOL names and values formatted by their PIC, conditions written in COBOL, and values changed from the variables panel |
+| Another compiler in one click | The status bar shows the profile the suites run with; one click switches it and offers to run the suites again. Same tests, another dialect |
+| Syntax for `.cblt` files | Highlighting for the suite language on top of COBOL, and folding per test case |
 
 Verified on macOS arm64 with GnuCOBOL 3.2, the `lldb-dap` that ships with Xcode and VS Code 1.147.
 
@@ -41,17 +41,7 @@ python3 -m pip install .
 
 The extension finds that `.venv` by itself when the project is the clone or a folder inside it; for a project elsewhere, set `cobalto.cliPath` to the `cobalto` executable inside it.
 
-To build the extension from source instead, from the repository:
-
-```bash
-cd vscode-cobalto && npm install && npm run compile && npm run package
-```
-
-```bash
-code --install-extension vscode-cobalto-0.1.0.vsix
-```
-
-On macOS, if `code` is not on the PATH, use `"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"`. After installing from a `.vsix`, reload the open windows (Developer: Reload Window).
+On macOS, if `code` is not on the PATH, use `"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"`.
 
 The extension activates by itself when a folder that contains a `cblt.json` is opened (in subfolders too: if there are several projects, the Test Explorer shows them separately).
 
@@ -112,57 +102,9 @@ Attributes: `suite` (required unless `"prepare": false`, which reuses the last `
 | `cobalto.coverage.colors.covered` | `rgba(166, 220, 142, 0.45)` | background of the executed statements |
 | `cobalto.coverage.colors.uncovered` | `rgba(255, 88, 88, 0.45)` | background of the non-executed statements |
 
-## How debugging works
-
-`cobalto debug --suite X` compiles with `cobc -g -fsource-location -save-temps` from `build/` and leaves, besides the executable, `build/X.lines.json` (generated line → source file and line), `build/X.layout.json` (every data item of each program with level, PIC, usage, `OCCURS`, `REDEFINES` and offset within its 01, taken from the symbol listing of `cobc -ftsymbols`) and cobc's `build/<program>.c.l.h` files, where each COBOL field is a `static cob_u8_t b_NNN[len]; /* NAME */` and each descriptor a `static cob_field f_NN = {size, b_NNN + offset, &a_K}; /* NAME */`. The proxy (`src/dap/proxy.ts`) reads those files when it receives `launch` and:
-
-- in `variables`, replaces `b_NNN` with the COBOL name; with the layout, it evaluates once the address of the 01 (or of the pointer of the `LINKAGE` parameter), reads the whole record with `readMemory` (or, with an `lldb-dap` that does not have that request, such as version 18, with lldb's `memory read` command) and formats each field in the extension according to its PIC and usage (`src/dap/layout.ts`: DISPLAY with overpunch or separate sign, COMP-3, COMP, COMP-5, COMP-1/2, POINTER, INDEX, edited fields and groups as text), with the subordinates and the occurrences as children; without a layout for an 01, it asks lldb-dap for `(char*)cob_get_field_str_buffered(&f_NN)`. The `LINKAGE` parameters are named from the `linkage for` comment of the `.c` (cobc 3.2) or from the `USING` list of the `.i` (cobc 3.1);
-- in `evaluate`, resolves a COBOL name with subscripts on the layout and formats it the same way (it serves hover, watch and console); a group is returned expandable;
-- in `setVariable`, encodes the new value with the same table and writes it with `writeMemory`;
-- in `setBreakpoints`, keeps the conditions written in COBOL and sends the breakpoint without them; on each stop with `hitBreakpointIds` it reads the records the condition needs, evaluates it and, if it is false, does `continue` without telling the client;
-- in `next`, `stepIn` and `stepOut`, repeats the step while the top frame is in a `.c` or on the same COBOL statement it started from (cobc interleaves `#line` directives of the `.c` between statements);
-- in `stackTrace`, marks as `subtle` the frames in `.c` or without a source and maps the frames of `build/X.cbl` to the `.cblt` or to the original program;
-- in `setBreakpoints`, moves the breakpoints of a `.cblt` or of an original program to the matching lines of the generated sources, keeping the union with the breakpoints set directly in them.
-
-A group with `SYNC` and padding (its children do not add up to its size) is marked in the layout and falls back to the earlier mode: only the fields with a descriptor.
-
-## Verification
-
-Headless, against the proxy over stdio (like any DAP client):
-
-```bash
-cd ../examples && cobalto debug --suite TSTINV
-```
-
-```bash
-node out/test/verify-dap.js ../examples TSTINV
-```
-
-It checks `initialize`, `launch`, breakpoints in `build/TSTINV.cbl`, `src/DISCOUNT.cbl` and `tests/INVOICE.cblt`, a false COBOL condition that does not stop and a true one that does, the stack with a COBOL source, `Globals` with `WS-AMOUNT` and without `b_NNN`, the group `WS-CUST` expandable with its three subfields and offsets, `setVariable` on a subfield and on an 01, `evaluate` with subscripts (`CBLT-MODE(2)`, out of range rejected, `CBLT-LOG-NR(1)` in `LINKAGE`), `next` and `stepOut` landing on COBOL lines, `Locals` with the `LINKAGE` parameters of DISCOUNT.
-
-On Linux, the same inside a Docker container (Ubuntu 24.04, GnuCOBOL 3.1.2, lldb-dap 18, Node 18; it needs `--cap-add=SYS_PTRACE`): it builds the image, copies the project and the compiled extension and runs the suites, `cobalto debug` and `verify-dap`:
-
-```bash
-test/linux/run.sh
-```
-
-Formatting and encoding of fields (`src/dap/layout.ts`), against GnuCOBOL: a generated program with DISPLAY with overpunch and separate sign, COMP-3, COMP, COMP-5, COMP-1/2, edited fields, `OCCURS` and a group writes its record to a file; the test takes the layout from the same symbol listing `cobalto debug` uses, formats those bytes and encodes each value again expecting the same bytes. Also references with subscripts, exact decimals, rejections of `setVariable` and the grammar of the conditions (`AND` before `OR`, `NOT`, parentheses, `EQUAL TO`, `NOT GREATER THAN`, space padding):
-
-```bash
-node out/test/verify-layout.js
-```
-
-Inside an actual VS Code (it opens the installed VS Code with the extension in development mode on the project and runs `src/test/suite` in the extension host; the script looks for VS Code in `/Applications` on macOS, and the `COBALTO_VSCODE` variable sets another executable):
-
-```bash
-node out/test/run-in-vscode.js ../examples
-```
-
-It checks the activation, the Test Explorer (suites, test cases, `IGNORE`, location, 105 test cases with 2 failures and 6 skipped after running them), the list of profiles taken from the CLI, a run the CLI cannot start (every test case shows the error instead of the earlier results), the coverage (`LOANCALC.cbl` at 100%, `DAYCLOSE.cbl` with statements not executed), a `cobalto` debug session with a breakpoint in `tests/INVOICE.cblt` (stop, stack, `Globals` with COBOL names, hover, Watch and `next`) and a second one on `TSTCLOSE`: a COBOL condition on an occurrence (`WS-MOV-AMOUNT(3) > 50000`) that is false in one test case and true in the next, `WS-MOVEMENTS` → `WS-MOV` with 50 occurrences → `WS-MOV(3)` expanded, hover and Watch with subscripts, `setVariable` on the occurrence, Watch of a signed `COMP` and *step into* the program. A third session, on `TSTBATCH`, sets a breakpoint on the `PERFORM 3000-END` of the failing test case, *steps into* down to the `MOVE WS-LINE-COUNT TO WS-T-COUNT` of `2600-WRITE-TRAILER` in `src/LOANBTCH.cbl` and watches `WS-LINE-COUNT` (3) and `WS-DEBIT-COUNT` (2). It leaves the detail in `build/vscode-verify.log` of the project.
-
 ## If the breakpoint does not hit
 
-- After installing or updating the extension from a `.vsix`, reload the window (Developer: Reload Window): an open window keeps running the previous version.
+- After installing or updating the extension, reload the window (Developer: Reload Window): an open window keeps running the previous version.
 - Check that the session is of type `cobalto`: the status bar and the debug console say "Cobalto: debug X", and the "Cobalto" output channel shows lines `[dap] launch: ... line map yes`. If "(plain lldb-dap)" or "(CodeLLDB)" was launched, the breakpoints of the `.cblt` are not moved.
 - A gray breakpoint in the `.cblt` with a message on hover: `build/X.lines.json` is missing or the configuration does not set `suite`; run `cobalto debug --suite X` with the current CLI or use the "Cobalto: Debug suite" command.
 - If the window has a parent folder open (for example the root of this repository) and not the project folder, the `launch.json` in the project's `.vscode/` does not apply; use the "Cobalto: Debug suite" command (it picks the project and the suite) or open the project folder.
@@ -177,26 +119,6 @@ It checks the activation, the Test Explorer (suites, test cases, `IGNORE`, locat
 - Data breakpoints (watchpoints) on COBOL fields are not supported.
 - The highlighting of the `.cbl` files and the breakpoints in them depend on an installed COBOL extension.
 
-## Development
+## Contributing
 
-```bash
-npm install && npm run compile
-```
-
-`npm run watch` recompiles on save and `npm run lint` runs ESLint. `npm test` runs the unit tests in `src/test/unit/`, which need no compiler, debugger or VS Code. `package.json` declares the contributions; the code is in `src/`. No runtime dependencies.
-
-| Module | What it holds |
-|---|---|
-| `extension.ts` | Activation: it wires everything below |
-| `project.ts`, `cli-path.ts`, `cli-result.ts` | Finding the projects and the `cobalto` executable, running the CLI and reading how it ended |
-| `tests.ts`, `suites.ts`, `junit.ts` | Test Explorer: the suites as the CLI lists them, runs and results |
-| `coverage.ts`, `lcov.ts`, `cov-map.ts` | Coverage in the gutter and in the Test Coverage view, from `build/lcov.info` and the branch labels of `build/cov/map.json` |
-| `profile.ts` | Compiler profile selector |
-| `debug.ts`, `hover.ts` | Debug configuration, adapter factory and hover expressions |
-| `dap/proxy.ts` | The DAP proxy: it only routes messages to the modules below |
-| `dap/channel.ts`, `dap/protocol.ts` | Connections to the client and to `lldb-dap`, and DAP framing |
-| `dap/session.ts` | What a session knows once launched: options and the maps of the suite |
-| `dap/stack.ts` | Frames shown at their COBOL source, one step per statement |
-| `dap/breakpoints.ts` | Breakpoints moved to the generated source, conditions written in COBOL |
-| `dap/records.ts`, `dap/variables.ts` | Reading and writing COBOL data in the memory of the program, and showing it as variables |
-| `dap/layout.ts`, `dap/cobol-map.ts`, `dap/line-map.ts`, `dap/schema.ts` | Readers of the files `cobalto debug` leaves in `build/` |
+How the debug adapter works, how the extension is verified and how to build it from source are in [DEVELOPMENT.md](https://github.com/abstracta/cobalto/blob/main/vscode-cobalto/DEVELOPMENT.md). Problems and ideas go to the [issues](https://github.com/abstracta/cobalto/issues) of the repository.

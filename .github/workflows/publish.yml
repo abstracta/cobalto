@@ -6,7 +6,7 @@
 #
 # Before running it, raise "version" in vscode-cobalto/package.json: the
 # Marketplace rejects a version that is already published.
-name: Publish
+name: Publish VS Code extension
 
 on:
   workflow_dispatch:
@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   extension:
-    name: VS Code extension to the Marketplace
+    name: Visual Studio Marketplace
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:

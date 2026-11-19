@@ -16,7 +16,7 @@ runs every layer of the CLI and ends with 0 when all of them pass; `python3 test
 | `examples` | `python3 tests/examples/selftest.py` | The example project with each profile that works on one machine, compared with `tests/examples/expected.json` | GnuCOBOL |
 | `dialects` | `python3 tests/dialects/selftest.py` | Everything Cobalto contributes to a build, checked with `cobc -fsyntax-only` in the eight strict dialects of GnuCOBOL | GnuCOBOL |
 
-The extension has its own: `npm run lint` and `npm test` in [`vscode-cobalto/`](../vscode-cobalto/), plus the checks against a debugger and inside VS Code that its README describes.
+The extension has its own: `npm run lint` and `npm test` in [`vscode-cobalto/`](../vscode-cobalto/), plus the checks against a debugger and inside VS Code that its [DEVELOPMENT.md](../vscode-cobalto/DEVELOPMENT.md) describes.
 
 [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs these layers on every push and pull request: the CLI ones on Linux and macOS, and the lint, unit tests and packaging of the extension.
 

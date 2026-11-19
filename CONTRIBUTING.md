@@ -43,7 +43,7 @@ npm run lint
 npm test
 ```
 
-Its [README](vscode-cobalto/README.md) describes the checks that need a debugger or a running VS Code.
+Its [DEVELOPMENT.md](vscode-cobalto/DEVELOPMENT.md) describes the checks that need a debugger or a running VS Code.
 
 [docs/design.md](docs/design.md) explains how Cobalto is built and why. Reading it first will save you time on anything larger than a small fix.
 
