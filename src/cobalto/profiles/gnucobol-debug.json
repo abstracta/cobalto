@@ -1,0 +1,8 @@
+{
+  "description": "GnuCOBOL with -g to debug in VS Code (lldb-dap) or lldb; compiles from build/ so that the executable's debug map finds the .o files. Verified on macOS.",
+  "results_org": "LINE SEQUENTIAL",
+  "results_format": "lines",
+  "results_path": "build/cblt-results.txt",
+  "compile": "cd {build} && cobc -x -g -fsource-location -save-temps -std=default -I {lib_rel} {incl_rel} -o ../{exe} ../{driver} {lib_rel}/CBLTLIB.cbl {tests_rel} {sources_rel}",
+  "run": "{exe}"
+}

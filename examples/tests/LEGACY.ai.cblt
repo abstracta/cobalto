@@ -1,0 +1,253 @@
+      * Complementary suite on LEGACY: covers what TSTLEG does not
+      * touch (the WRITE in the EVALUATE, CALL without a mock, content
+      * of the REWRITE, boundary keys, leftover WS-B on INVALID KEY,
+      * the EXIT-PARA paragraph and initial values).
+       TESTSUITE LEGACYAI 'Legacy: additional branches and limits'
+       PROGRAM LEGACY
+
+       WORKING-STORAGE SECTION.
+       01  T-REC.
+           05  T-KEY              PIC X(4).
+           05  T-DATA             PIC X(20).
+
+       BEFORE-EACH
+           MOVE ZERO TO WS-B
+           MOVE SPACES TO WS-GRP WS-TIME WS-FS T-REC
+           MOVE "N" TO END-OF-FILE
+       END-BEFORE
+
+       TESTCASE 'invalid key: no copy, WS-B 4 and clock'
+           MOCK FILE MASTER-FILE
+               ON READ
+                   MOVE "K009" TO M-KEY
+                   MOVE "MUST NOT BE COPIED" TO M-DATA
+                   SET CBLT-AT-END TO TRUE
+           END-MOCK
+           MOCK CALL WS-PROG
+               CONTINUE
+           END-MOCK
+           MOCK CLOCK
+               TIME '23595999'
+           END-MOCK
+           PERFORM MAIN
+           EXPECT END-OF-FILE TO BE 'Y'
+           EXPECT WS-GRP TO BE SPACES
+      * WS-B is still 0: ELSE MOVE 4 and the PERFORM VARYING exits at 4
+           EXPECT WS-B TO BE NUMERIC 4
+           EXPECT WS-TIME TO BE '23595999'
+           VERIFY CLOCK HAPPENED 3 TIMES
+           VERIFY CALL WS-PROG NEVER HAPPENED
+           VERIFY WRITE MASTER-FILE NEVER HAPPENED
+           VERIFY REWRITE MASTER-FILE NEVER HAPPENED
+           VERIFY START MASTER-FILE HAPPENED ONCE
+           VERIFY DELETE MASTER-FILE HAPPENED ONCE
+           VERIFY CLOSE MASTER-FILE HAPPENED ONCE
+
+      * The body of the NOT ON EXCEPTION (ADD 1) runs after the mock of
+      * the CALL; WS-B is left at 0 so that it ends up at 1 (WHEN 1).
+       TESTCASE 'WHEN 1 branch: WRITE from WS-GRP'
+           MOCK FILE MASTER-FILE
+               ON READ
+                   MOVE "XXXX" TO M-KEY
+                   MOVE "SYNTHETIC ADD 01" TO M-DATA
+               ON WRITE
+                   MOVE M-REC TO T-REC
+           END-MOCK
+           MOCK CALL WS-PROG
+               MOVE 0 TO WS-B
+           END-MOCK
+           MOCK CLOCK
+               TIME '00000000'
+           END-MOCK
+           PERFORM MAIN
+           EXPECT WS-B TO BE NUMERIC 1
+           EXPECT T-KEY TO BE 'XXXX'
+           EXPECT T-DATA TO BE 'SYNTHETIC ADD 01'
+           EXPECT WS-FS TO BE '00'
+           VERIFY CALL WS-PROG HAPPENED ONCE
+           VERIFY WRITE MASTER-FILE HAPPENED ONCE
+           VERIFY REWRITE MASTER-FILE NEVER HAPPENED
+           VERIFY CLOCK NEVER HAPPENED
+
+      * REVIEWED: the CALL to NOSUCH does fail and shows "not found",
+      * but GnuCOBOL binds the NOT ON EXCEPTION to the preceding DISPLAY
+      * (which does not fail) and not to the CALL, so the ADD 1 runs
+      * anyway: WS-B ends at 2 and the REWRITE is executed. Actual
+      * behavior of the program under this compiler, not of Cobalto.
+       TESTCASE 'unmocked CALL to NOSUCH: NOT ON EXCEPTION'
+           MOCK FILE MASTER-FILE
+               ON READ
+                   MOVE "XXXX" TO M-KEY
+                   MOVE "NO PROGRAM 03" TO M-DATA
+               ON REWRITE
+                   MOVE M-REC TO T-REC
+           END-MOCK
+           MOCK CLOCK
+               TIME '00000000'
+           END-MOCK
+           PERFORM MAIN
+           EXPECT WS-PROG TO BE 'NOSUCH'
+           EXPECT WS-B TO BE NUMERIC 2
+           EXPECT T-KEY TO BE 'XXXX'
+           EXPECT T-DATA TO BE 'NO PROGRAM 03'
+           VERIFY CALL WS-PROG HAPPENED ONCE
+           VERIFY WRITE MASTER-FILE NEVER HAPPENED
+           VERIFY REWRITE MASTER-FILE HAPPENED ONCE
+
+       TESTCASE 'REWRITE branch writes the record that was read'
+           MOCK FILE MASTER-FILE
+               ON READ
+                   MOVE "XXXX" TO M-KEY
+                   MOVE "SYNTHETIC CHANGE 02" TO M-DATA
+               ON REWRITE
+                   MOVE M-REC TO T-REC
+           END-MOCK
+           MOCK CALL WS-PROG
+               CONTINUE
+           END-MOCK
+           MOCK CLOCK
+               TIME '00000000'
+           END-MOCK
+           PERFORM MAIN
+           EXPECT WS-B TO BE NUMERIC 2
+           EXPECT T-KEY TO BE 'XXXX'
+           EXPECT T-DATA TO BE 'SYNTHETIC CHANGE 02'
+           EXPECT WS-FS TO BE '00'
+           VERIFY REWRITE MASTER-FILE HAPPENED ONCE
+           VERIFY CLOCK NEVER HAPPENED
+
+       TESTCASE 'lowercase key xxxx does not trigger the CALL'
+           MOCK FILE MASTER-FILE
+               ON READ
+                   MOVE "xxxx" TO M-KEY
+                   MOVE SPACES TO M-DATA
+           END-MOCK
+           MOCK CALL WS-PROG
+               CONTINUE
+           END-MOCK
+           MOCK CLOCK
+               TIME '11111111'
+           END-MOCK
+           PERFORM MAIN
+           EXPECT WS-KEY TO BE 'xxxx'
+           EXPECT WS-B TO BE NUMERIC 4
+           VERIFY CALL WS-PROG NEVER HAPPENED
+           VERIFY CLOCK HAPPENED 3 TIMES
+           VERIFY WRITE MASTER-FILE NEVER HAPPENED
+           VERIFY REWRITE MASTER-FILE NEVER HAPPENED
+
+       TESTCASE 'blank record: valid read, ELSE IF branch'
+           MOCK FILE MASTER-FILE
+               ON READ
+                   MOVE SPACES TO M-REC
+           END-MOCK
+           MOCK CALL WS-PROG
+               CONTINUE
+           END-MOCK
+           MOCK CLOCK
+               TIME '22222222'
+           END-MOCK
+           PERFORM MAIN
+           EXPECT END-OF-FILE TO BE 'N'
+           EXPECT WS-KEY TO BE SPACES
+           EXPECT WS-B TO BE NUMERIC 4
+           EXPECT WS-TIME TO BE '22222222'
+           VERIFY CALL WS-PROG NEVER HAPPENED
+           VERIFY CLOCK HAPPENED 3 TIMES
+
+       TESTCASE 'READ INTO copies all of M-DATA to WS-DATA'
+           MOCK FILE MASTER-FILE
+               ON READ
+                   MOVE "K777" TO M-KEY
+                   MOVE "ABCDEFGHIJKLMNOPQRST" TO M-DATA
+           END-MOCK
+           MOCK CALL WS-PROG
+               CONTINUE
+           END-MOCK
+           MOCK CLOCK
+               TIME '00000000'
+           END-MOCK
+           PERFORM MAIN
+           EXPECT WS-KEY TO BE 'K777'
+           EXPECT WS-DATA TO BE 'ABCDEFGHIJKLMNOPQRST'
+           EXPECT WS-DATA TO CONTAIN 'QRST'
+           EXPECT END-OF-FILE TO BE 'N'
+
+      * REVIEW: WS-B is not initialized in MAIN; on INVALID KEY it
+      * keeps its previous value. With 1 the CALL path is taken.
+       TESTCASE 'INVALID KEY with leftover WS-B 1: does the CALL'
+           MOVE 1 TO WS-B
+           MOCK FILE MASTER-FILE
+               ON READ
+                   SET CBLT-AT-END TO TRUE
+           END-MOCK
+           MOCK CALL WS-PROG
+               CONTINUE
+           END-MOCK
+           MOCK CLOCK
+               TIME '00000000'
+           END-MOCK
+           PERFORM MAIN
+           EXPECT END-OF-FILE TO BE 'Y'
+           EXPECT WS-GRP TO BE SPACES
+           EXPECT WS-B TO BE NUMERIC 2
+           VERIFY CALL WS-PROG HAPPENED ONCE
+           VERIFY REWRITE MASTER-FILE HAPPENED ONCE
+           VERIFY WRITE MASTER-FILE NEVER HAPPENED
+           VERIFY CLOCK NEVER HAPPENED
+
+      * REVIEW: leftover WS-B 2 with INVALID KEY goes into the ELSE IF
+      * (MOVE 3) and the PERFORM VARYING leaves it at 4.
+       TESTCASE 'INVALID KEY with leftover WS-B 2: MOVE 3'
+           MOVE 2 TO WS-B
+           MOCK FILE MASTER-FILE
+               ON READ
+                   SET CBLT-AT-END TO TRUE
+           END-MOCK
+           MOCK CALL WS-PROG
+               CONTINUE
+           END-MOCK
+           MOCK CLOCK
+               TIME '12000000'
+           END-MOCK
+           PERFORM MAIN
+           EXPECT END-OF-FILE TO BE 'Y'
+           EXPECT WS-B TO BE NUMERIC 4
+           EXPECT WS-TIME TO BE '12000000'
+           VERIFY CALL WS-PROG NEVER HAPPENED
+           VERIFY CLOCK HAPPENED 3 TIMES
+           VERIFY WRITE MASTER-FILE NEVER HAPPENED
+           VERIFY REWRITE MASTER-FILE NEVER HAPPENED
+
+       TESTCASE 'START without INVALID KEY: no jump to EXIT-PARA'
+           MOCK FILE MASTER-FILE
+               ON READ
+                   MOVE "K002" TO M-KEY
+           END-MOCK
+           MOCK CALL WS-PROG
+               CONTINUE
+           END-MOCK
+           MOCK CLOCK
+               TIME '00000000'
+           END-MOCK
+           PERFORM MAIN
+           VERIFY PARAGRAPH MAIN HAPPENED ONCE
+           VERIFY PARAGRAPH EXIT-PARA NEVER HAPPENED
+           VERIFY START MASTER-FILE HAPPENED ONCE
+           VERIFY DELETE MASTER-FILE HAPPENED ONCE
+
+       TESTCASE 'EXIT-PARA paragraph only executes EXIT'
+           MOCK FILE MASTER-FILE
+           END-MOCK
+           PERFORM EXIT-PARA
+           EXPECT WS-B TO BE ZEROS
+           EXPECT END-OF-FILE TO BE 'N'
+           EXPECT WS-GRP TO BE SPACES
+           VERIFY PARAGRAPH EXIT-PARA HAPPENED ONCE
+           VERIFY OPEN MASTER-FILE NEVER HAPPENED
+           VERIFY CLOSE MASTER-FILE NEVER HAPPENED
+
+       TESTCASE 'initial values of WS-PROG and WS-MSG'
+           EXPECT WS-PROG TO BE 'NOSUCH'
+           EXPECT WS-MSG TO CONTAIN 'hello, world.'
+           EXPECT WS-MSG TO CONTAIN 'final period'

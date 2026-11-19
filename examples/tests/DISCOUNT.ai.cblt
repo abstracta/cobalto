@@ -1,0 +1,94 @@
+      * Characterization suite generated for DISCOUNT (external mode).
+      * Covers tier limits, truncation and overwriting of the outputs.
+       TESTSUITE DISCOUNTAI 'DISCOUNT: limits, truncation and outputs'
+
+       WORKING-STORAGE SECTION.
+       01  T-AMOUNT                  PIC 9(7)V99.
+       01  T-RESULT                  PIC 9(7)V99.
+       01  T-CATEGORY.
+           05  T-CAT-HEAD            PIC X(5).
+           05  T-CAT-TAIL            PIC X(5).
+
+       BEFORE-EACH
+           MOVE ZERO TO T-AMOUNT
+           MOVE 1234567.89 TO T-RESULT
+           MOVE ALL 'X' TO T-CATEGORY
+       END-BEFORE
+
+       TESTCASE 'exact limit 1000 is premium'
+           MOVE 1000 TO T-AMOUNT
+           CALL "DISCOUNT" USING T-AMOUNT T-RESULT T-CATEGORY
+           EXPECT T-RESULT TO BE NUMERIC 800
+           EXPECT T-CATEGORY TO BE 'PREMIUM'
+
+       TESTCASE 'just below 1000 is standard'
+           MOVE 999.99 TO T-AMOUNT
+           CALL "DISCOUNT" USING T-AMOUNT T-RESULT T-CATEGORY
+      * REVIEW: 999.99 - 99.999 = 899.991; without ROUNDED it truncates.
+           EXPECT T-RESULT TO BE NUMERIC 899.99
+           EXPECT T-CATEGORY TO BE 'STANDARD'
+
+       TESTCASE 'exact limit 500 is standard'
+           MOVE 500 TO T-AMOUNT
+           CALL "DISCOUNT" USING T-AMOUNT T-RESULT T-CATEGORY
+           EXPECT T-RESULT TO BE NUMERIC 450
+           EXPECT T-CATEGORY TO BE 'STANDARD'
+
+       TESTCASE 'just below 500 is basic'
+           MOVE 499.99 TO T-AMOUNT
+           CALL "DISCOUNT" USING T-AMOUNT T-RESULT T-CATEGORY
+           EXPECT T-RESULT TO BE NUMERIC 499.99
+           EXPECT T-CATEGORY TO BE 'BASIC'
+
+       TESTCASE 'zero amount is basic and the result is zero'
+           MOVE 0 TO T-AMOUNT
+           CALL "DISCOUNT" USING T-AMOUNT T-RESULT T-CATEGORY
+           EXPECT T-RESULT TO BE ZEROS
+           EXPECT T-CATEGORY TO BE 'BASIC'
+
+       TESTCASE 'smallest positive amount 0.01'
+           MOVE 0.01 TO T-AMOUNT
+           CALL "DISCOUNT" USING T-AMOUNT T-RESULT T-CATEGORY
+           EXPECT T-RESULT TO BE NUMERIC 0.01
+           EXPECT T-CATEGORY TO BE 'BASIC'
+
+       TESTCASE 'largest amount the PIC holds is premium'
+           MOVE 9999999.99 TO T-AMOUNT
+           CALL "DISCOUNT" USING T-AMOUNT T-RESULT T-CATEGORY
+      * REVIEW: 9999999.99 * 0.80 = 7999999.992; it is truncated.
+           EXPECT T-RESULT TO BE NUMERIC 7999999.99
+           EXPECT T-CATEGORY TO BE 'PREMIUM'
+
+       TESTCASE 'standard truncates the third decimal'
+           MOVE 555.55 TO T-AMOUNT
+           CALL "DISCOUNT" USING T-AMOUNT T-RESULT T-CATEGORY
+      * REVIEW: 555.55 - 55.555 = 499.995; without ROUNDED, 499.99.
+           EXPECT T-RESULT TO BE NUMERIC 499.99
+           EXPECT T-CATEGORY TO BE 'STANDARD'
+
+       TESTCASE 'premium truncates the third decimal'
+           MOVE 1234.56 TO T-AMOUNT
+           CALL "DISCOUNT" USING T-AMOUNT T-RESULT T-CATEGORY
+      * REVIEW: 1234.56 - 246.912 = 987.648; without ROUNDED, 987.64.
+           EXPECT T-RESULT TO BE NUMERIC 987.64
+           EXPECT T-CATEGORY TO BE 'PREMIUM'
+
+       TESTCASE 'standard 700 gets the actual 10%'
+           MOVE 700 TO T-AMOUNT
+           CALL "DISCOUNT" USING T-AMOUNT T-RESULT T-CATEGORY
+           EXPECT T-RESULT TO BE NUMERIC 630
+           EXPECT T-CATEGORY TO BE 'STANDARD'
+
+       TESTCASE 'previous category is replaced and space-padded'
+           MOVE 100 TO T-AMOUNT
+           CALL "DISCOUNT" USING T-AMOUNT T-RESULT T-CATEGORY
+           EXPECT T-CAT-HEAD TO BE 'BASIC'
+           EXPECT T-CAT-TAIL TO BE SPACES
+           EXPECT T-RESULT TO BE NUMERIC 100
+
+       TESTCASE 'the input amount is not modified'
+           MOVE 2500 TO T-AMOUNT
+           CALL "DISCOUNT" USING T-AMOUNT T-RESULT T-CATEGORY
+           EXPECT T-AMOUNT TO BE NUMERIC 2500
+           EXPECT T-RESULT TO BE NUMERIC 2000
+           EXPECT T-CATEGORY TO BE 'PREMIUM'

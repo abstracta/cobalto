@@ -1,0 +1,33 @@
+{
+  "description": "VSI COBOL on OpenVMS over ssh/scp. .COB sources in terminal format (what COBOL reads without /ANSI_FORMAT); the compile command goes straight into compile_each. Compile, link, run and results file verified with VSI COBOL V3.1-0007 on OpenVMS V8.4-2L3, with the .COM files run by hand from a terminal. ssh/scp not verified on a real OpenVMS.",
+  "host": "",
+  "remote_dir": "",
+  "remote": "ssh {host}",
+  "upload": "scp -q {upload_files} {host}:{remote_dir}",
+  "invoke": "@{remote_dir}{script}",
+  "scripts": {
+    "compile": "CBLT_BUILD.COM",
+    "run": "CBLT_RUN.COM"
+  },
+  "pad80": false,
+  "source_ext": ".COB",
+  "source_format": "terminal",
+  "copybook_ext": ".LIB",
+  "obj_ext": ".OBJ",
+  "objs_sep": ", ",
+  "compile_each": {
+    ".COB": "$ COBOL/LIST {file}",
+    ".SCO": "$ SQL$PRE/COBOL {file}"
+  },
+  "compile": {
+    "file": "vms-vsi-cobol.build.com"
+  },
+  "run": {
+    "file": "vms-vsi-cobol.run.com"
+  },
+  "fetch": "scp -q {host}:{remote_dir}CBLT_RESULTS.DAT {results_local}",
+  "results_org": "SEQUENTIAL",
+  "results_format": "fixed200",
+  "results_path": "CBLT_RESULTS",
+  "results_local": "build/cblt-results.dat"
+}

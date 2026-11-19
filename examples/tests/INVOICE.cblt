@@ -1,0 +1,117 @@
+      * In-program suite: the tests run INSIDE a copy of INVOICE, with
+      * access to its WORKING-STORAGE and PERFORM of its paragraphs. A
+      * MOCK applies only in the case that declares it.
+       TESTSUITE TSTINV 'Invoicing (in-program on INVOICE)'
+       PROGRAM INVOICE
+
+       WORKING-STORAGE SECTION.
+       01  WS-CAPTURED               PIC X(80).
+       01  WS-CAPT-COUNT             PIC 9(3).
+
+       BEFORE-EACH
+           MOVE ZERO TO WS-TOTAL WS-READ-COUNT WS-LINE-COUNT
+           MOVE ZERO TO WS-CAPT-COUNT
+           MOVE SPACES TO WS-CAPTURED
+           MOVE "N" TO WS-EOF
+       END-BEFORE
+
+       TESTCASE 'one line calculated with the real DISCOUNT'
+           MOVE 2000 TO WS-C-AMOUNT
+           PERFORM 2100-CALC
+           EXPECT WS-NET TO BE NUMERIC 1600
+           EXPECT WS-CATEGORY TO BE 'PREMIUM'
+           EXPECT WS-TOTAL TO BE NUMERIC 1600
+           VERIFY CALL 'DISCOUNT' HAPPENED ONCE
+
+       TESTCASE 'calculation with DISCOUNT mocked'
+           MOCK CALL 'DISCOUNT'
+               MOVE 999 TO WS-NET
+               MOVE 'MOCKED' TO WS-CATEGORY
+           END-MOCK
+           MOVE 2000 TO WS-C-AMOUNT
+           PERFORM 2100-CALC
+           EXPECT WS-NET TO BE NUMERIC 999
+           EXPECT WS-CATEGORY TO BE 'MOCKED'
+           VERIFY CALL 'DISCOUNT' HAPPENED 1 TIMES
+
+       TESTCASE 'the mock of the previous case does not affect this one'
+           MOVE 100 TO WS-C-AMOUNT
+           PERFORM 2100-CALC
+           EXPECT WS-CATEGORY TO BE 'BASIC'
+           VERIFY CALL 'DISCOUNT' HAPPENED ONCE
+
+       TESTCASE 'full process with mocked files'
+           MOCK FILE CUST-FILE
+               ON READ
+                   EVALUATE CBLT-READ-COUNT
+                       WHEN 1
+                           MOVE "C001ACME      000200000" TO CUST-REC
+                       WHEN 2
+                           MOVE "C002BETA      000050000" TO CUST-REC
+                       WHEN OTHER
+                           SET CBLT-AT-END TO TRUE
+                   END-EVALUATE
+           END-MOCK
+           MOCK FILE REPORT-FILE
+               ON WRITE
+                   ADD 1 TO WS-CAPT-COUNT
+                   MOVE REPORT-REC TO WS-CAPTURED
+           END-MOCK
+           PERFORM 2000-PROCESS
+           EXPECT WS-READ-COUNT TO BE NUMERIC 2
+           EXPECT WS-LINE-COUNT TO BE NUMERIC 2
+           EXPECT WS-CAPT-COUNT TO BE NUMERIC 2
+           EXPECT WS-TOTAL TO BE NUMERIC 2050
+           EXPECT WS-CAPTURED TO CONTAIN 'BETA'
+           EXPECT WS-CAPTURED TO CONTAIN 'STANDARD'
+           EXPECT WS-CUST-STATUS TO BE '10'
+           VERIFY PARAGRAPH 2100-CALC HAPPENED 2 TIMES
+           VERIFY READ CUST-FILE HAPPENED 3 TIMES
+           VERIFY WRITE REPORT-FILE HAPPENED 2 TIMES
+           VERIFY CALL 'DISCOUNT' HAPPENED AT LEAST 2 TIMES
+           VERIFY PARAGRAPH 3000-END NEVER HAPPENED
+
+       TESTCASE 'initialization with mocked clock and files'
+           MOCK CLOCK
+               DATE '251102'
+           END-MOCK
+           MOCK FILE CUST-FILE
+           END-MOCK
+           MOCK FILE REPORT-FILE
+               ON WRITE
+                   MOVE REPORT-REC TO WS-CAPTURED
+           END-MOCK
+           PERFORM 1000-INIT
+           EXPECT WS-DATE TO BE NUMERIC 251102
+           EXPECT WS-CAPTURED TO CONTAIN 'INVOICING   251102'
+           EXPECT WS-REP-STATUS TO BE '00'
+           VERIFY OPEN CUST-FILE HAPPENED ONCE
+           VERIFY WRITE REPORT-FILE HAPPENED ONCE
+           VERIFY PARAGRAPH 2500-WRITE-HEADER HAPPENED ONCE
+
+       TESTCASE 'mocked paragraph: the original does not run'
+           MOCK PARAGRAPH 2100-CALC
+               MOVE 5 TO WS-NET
+               ADD WS-NET TO WS-TOTAL
+           END-MOCK
+           MOVE 2000 TO WS-C-AMOUNT
+           PERFORM 2100-CALC
+           PERFORM 2100-CALC
+           EXPECT WS-NET TO BE NUMERIC 5
+           EXPECT WS-TOTAL TO BE NUMERIC 10
+           VERIFY PARAGRAPH 2100-CALC HAPPENED 2 TIMES
+           VERIFY CALL 'DISCOUNT' NEVER HAPPENED
+
+       TESTCASE 'mocked read in a single paragraph'
+           MOCK FILE CUST-FILE
+               ON READ AT END
+           END-MOCK
+           PERFORM 2010-READ-CUST
+           EXPECT WS-END-OF-FILE TO BE TRUE
+           EXPECT WS-READ-COUNT TO BE ZEROS
+           VERIFY READ CUST-FILE HAPPENED NO MORE THAN 1 TIMES
+
+       IGNORE
+       TESTCASE 'pending: close with a file error'
+           PERFORM 3000-END
+           EXPECT WS-CUST-STATUS TO BE '00'

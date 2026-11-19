@@ -1,0 +1,80 @@
+# Cobalto's own tests on every push and pull request.
+#   cli:       the layers of tests/run.py with GnuCOBOL, on Linux and macOS,
+#              with the oldest Python supported and a current one; then the
+#              package installed with pip and run as a command.
+#   extension: lint, unit tests and packaging of the VS Code extension.
+# The checks that need a debugger or VS Code itself are run by hand; the
+# README of vscode-cobalto/ describes them.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cli:
+    name: CLI (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, python: "3.9" }
+          - { os: ubuntu-24.04, python: "3.13" }
+          - { os: macos-15, python: "3.13" }
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      # gnucobol3 is GnuCOBOL 3.1.2, the stable branch in Ubuntu 24.04
+      - name: Install GnuCOBOL (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gnucobol3
+      - name: Install GnuCOBOL (macOS)
+        if: runner.os == 'macOS'
+        run: brew install gnucobol
+      - name: Compiler version
+        run: cobc --version
+      - name: Tests
+        run: python tests/run.py
+      - name: Install the package and run it as a command
+        run: |
+          python -m pip install .
+          cobalto --version
+          cblt --version
+          cd examples
+          cobalto list
+          cobalto profiles
+
+  extension:
+    name: VS Code extension
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: vscode-cobalto
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: vscode-cobalto/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      # the package step runs lint and compile again (vscode:prepublish)
+      - name: Package
+        run: npx vsce package --no-dependencies

@@ -1,0 +1,26 @@
+{
+  "description": "Simulates the remote host in a local folder with 'sh -c' (no sshd needed). Same mechanics as vms-vsi-cobol. Verified.",
+  "remote_dir": "build/sim-host",
+  "remote": "sh -c",
+  "upload": "mkdir -p {remote_dir} && cp {upload_files} {remote_dir}/",
+  "invoke": "cd {remote_dir} && sh {script}",
+  "scripts": {
+    "compile": "CBLT_BUILD.SH",
+    "run": "CBLT_RUN.SH"
+  },
+  "pad80": true,
+  "copybook_ext": ".LIB",
+  "obj_ext": ".o",
+  "objs_sep": " ",
+  "compile": {
+    "file": "remote-sim.build.sh"
+  },
+  "run": {
+    "file": "remote-sim.run.sh"
+  },
+  "fetch": "cp {remote_dir}/CBLT_RESULTS.DAT {results_local}",
+  "results_org": "SEQUENTIAL",
+  "results_format": "fixed200",
+  "results_path": "CBLT_RESULTS",
+  "results_local": "build/cblt-results.dat"
+}

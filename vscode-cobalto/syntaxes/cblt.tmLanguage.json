@@ -1,0 +1,104 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Cobalto test (.cblt)",
+  "scopeName": "source.cobalto-test",
+  "fileTypes": ["cblt"],
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#dsl-head" },
+    { "include": "#dsl-block" },
+    { "include": "#dsl-expect" },
+    { "include": "#dsl-keyword" },
+    { "include": "source.cobol" },
+    { "include": "#cobol-fallback" }
+  ],
+  "repository": {
+    "comment": {
+      "patterns": [
+        { "name": "comment.line.cobol.cobalto-test", "match": "^.{6}[*/].*$" },
+        { "name": "comment.line.inline.cobalto-test", "match": "\\*>.*$" }
+      ]
+    },
+    "dsl-head": {
+      "comment": "TESTSUITE id 'description' / TESTCASE 'name' / PROGRAM name",
+      "patterns": [
+        {
+          "match": "^(\\s*)(TESTSUITE)\\b\\s*([A-Za-z][A-Za-z0-9-]*)?\\s*(.*)$",
+          "captures": {
+            "2": { "name": "keyword.control.testsuite.cobalto-test" },
+            "3": { "name": "entity.name.class.suite.cobalto-test" },
+            "4": { "patterns": [{ "include": "#string" }] }
+          }
+        },
+        {
+          "match": "^(\\s*)(TESTCASE)\\b\\s*(.*)$",
+          "captures": {
+            "2": { "name": "keyword.control.testcase.cobalto-test" },
+            "3": { "name": "entity.name.function.testcase.cobalto-test", "patterns": [{ "include": "#string" }] }
+          }
+        },
+        {
+          "match": "^(\\s*)(PROGRAM)\\b\\s*(.*)$",
+          "captures": {
+            "2": { "name": "keyword.control.program.cobalto-test" },
+            "3": { "name": "entity.name.class.program.cobalto-test", "patterns": [{ "include": "#string" }] }
+          }
+        }
+      ]
+    },
+    "dsl-block": {
+      "comment": "BEFORE-EACH / END-BEFORE / AFTER-EACH / END-AFTER / IGNORE / END-MOCK",
+      "match": "^\\s*(BEFORE-EACH|END-BEFORE|AFTER-EACH|END-AFTER|IGNORE|END-MOCK)\\b",
+      "captures": { "1": { "name": "keyword.control.block.cobalto-test" } }
+    },
+    "dsl-expect": {
+      "comment": "EXPECT, VERIFY, MOCK and ON with their auxiliary words",
+      "begin": "^\\s*(EXPECT|VERIFY|MOCK|ON)\\b",
+      "beginCaptures": { "1": { "name": "keyword.control.assert.cobalto-test" } },
+      "end": "$",
+      "patterns": [
+        { "include": "#string" },
+        { "include": "#number" },
+        {
+          "name": "keyword.operator.word.cobalto-test",
+          "match": "\\b(TO|NOT|BE|NUMERIC|TRUE|FALSE|CONTAIN|CONTAINS|START|STARTS|WITH|GREATER|LESS|THAN|BETWEEN|AND|OR|ZERO|ZEROS|ZEROES|SPACE|SPACES|HIGH-VALUES|LOW-VALUES|HAPPENED|NEVER|ONCE|TIMES|AT|LEAST|MOST|CALL|PARAGRAPH|FILE|SQL|CLOCK|READ|WRITE|REWRITE|DELETE|OPEN|CLOSE|END|DATE|DAY|DAY-OF-WEEK|TIME|YYYYMMDD|YYYYDDD|LENGTH|OF|EQUAL|EQUALS)\\b"
+        },
+        { "name": "variable.other.cobol.cobalto-test", "match": "\\b[A-Za-z][A-Za-z0-9-]*\\b" }
+      ]
+    },
+    "dsl-keyword": {
+      "match": "^\\s*(TESTSUITE|TESTCASE|BEFORE-EACH|END-BEFORE|AFTER-EACH|END-AFTER|IGNORE|EXPECT|MOCK|END-MOCK|ON|VERIFY|PROGRAM)\\b",
+      "captures": { "1": { "name": "keyword.control.cobalto-test" } }
+    },
+    "string": {
+      "patterns": [
+        { "name": "string.quoted.double.cobalto-test", "match": "\"[^\"]*\"" },
+        { "name": "string.quoted.single.cobalto-test", "match": "'[^']*'" }
+      ]
+    },
+    "number": {
+      "name": "constant.numeric.cobalto-test",
+      "match": "(?<![A-Za-z0-9-])[+-]?\\d+(\\.\\d+)?(?![A-Za-z0-9-])"
+    },
+    "cobol-fallback": {
+      "comment": "Minimal highlighting when no COBOL extension is installed (source.cobol)",
+      "patterns": [
+        { "include": "#string" },
+        { "include": "#number" },
+        {
+          "name": "keyword.control.cobol.cobalto-test",
+          "match": "\\b(IF|ELSE|END-IF|EVALUATE|WHEN|OTHER|END-EVALUATE|PERFORM|END-PERFORM|VARYING|UNTIL|TIMES|THRU|THROUGH|CALL|USING|BY|REFERENCE|CONTENT|VALUE|RETURNING|GO|GOBACK|EXIT|PROGRAM|STOP|RUN|CONTINUE|NEXT|SENTENCE|SET|TRUE|FALSE|ON|SIZE|ERROR|OVERFLOW|EXCEPTION|INVALID|KEY|AT|END|NOT|AND|OR|SEARCH|ALL|INSPECT|TALLYING|REPLACING|STRING|UNSTRING|DELIMITED|INTO|FROM|TO|GIVING|ROUNDED|CORRESPONDING|CORR|INITIALIZE|OPEN|CLOSE|READ|WRITE|REWRITE|DELETE|START|INPUT|OUTPUT|I-O|EXTEND|SORT|MERGE|RELEASE|RETURN|ACCEPT|DISPLAY|UPON|COPY|REPLACING|EXEC|END-EXEC|SQL)\\b"
+        },
+        {
+          "name": "keyword.other.verb.cobol.cobalto-test",
+          "match": "\\b(MOVE|ADD|SUBTRACT|MULTIPLY|DIVIDE|COMPUTE)\\b"
+        },
+        {
+          "name": "storage.type.cobol.cobalto-test",
+          "match": "\\b(WORKING-STORAGE|LOCAL-STORAGE|LINKAGE|FILE|SECTION|DIVISION|PIC|PICTURE|OCCURS|REDEFINES|COMP|COMP-3|COMP-5|BINARY|PACKED-DECIMAL|DISPLAY|INDEXED|DEPENDING|SIGN|LEADING|TRAILING|SEPARATE|JUSTIFIED|JUST|BLANK|ZERO|ZEROS|ZEROES|SPACE|SPACES|HIGH-VALUES|LOW-VALUES|QUOTE|QUOTES|NULL|NULLS|FD|SD|SELECT|ASSIGN|ORGANIZATION|ACCESS|MODE|SEQUENTIAL|RELATIVE|RECORD|STATUS|IS|ARE)\\b"
+        },
+        { "name": "constant.numeric.level.cobalto-test", "match": "^\\s*(0[1-9]|[1-4][0-9]|66|77|88)\\b" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,44 @@
+      * Sample suite in the CBLT DSL. Any line that is not a DSL keyword
+      * is plain COBOL and is copied as is.
+       TESTSUITE TSTDISC 'Discounts by amount'
+
+       WORKING-STORAGE SECTION.
+       01  WS-AMOUNT                 PIC 9(7)V99.
+       01  WS-RESULT                 PIC 9(7)V99.
+       01  WS-CATEGORY               PIC X(10).
+           88  WS-IS-PREMIUM         VALUE "PREMIUM".
+
+       BEFORE-EACH
+           MOVE ZERO TO WS-RESULT
+           MOVE SPACES TO WS-CATEGORY
+       END-BEFORE
+
+       TESTCASE 'premium amount gets 20%'
+           MOVE 2000 TO WS-AMOUNT
+           CALL "DISCOUNT" USING WS-AMOUNT WS-RESULT WS-CATEGORY
+           EXPECT WS-RESULT TO BE NUMERIC 1600
+           EXPECT WS-CATEGORY TO BE 'PREMIUM'
+           EXPECT WS-IS-PREMIUM TO BE TRUE
+           EXPECT WS-CATEGORY TO CONTAIN 'PREM'
+           EXPECT WS-RESULT TO BE GREATER THAN 1000
+           EXPECT WS-RESULT TO BE BETWEEN 1500 AND 1700
+           DISPLAY "premium result: " WS-RESULT
+
+       TESTCASE 'basic amount gets no discount'
+           MOVE 100 TO WS-AMOUNT
+           CALL "DISCOUNT" USING WS-AMOUNT WS-RESULT WS-CATEGORY
+           EXPECT WS-RESULT TO BE NUMERIC 100
+           EXPECT WS-CATEGORY NOT TO BE 'PREMIUM'
+           EXPECT WS-IS-PREMIUM TO BE FALSE
+           EXPECT WS-RESULT TO BE LESS THAN WS-AMOUNT + 1
+
+       TESTCASE 'intentional failure to show the report'
+           MOVE 700 TO WS-AMOUNT
+           CALL "DISCOUNT" USING WS-AMOUNT WS-RESULT WS-CATEGORY
+           EXPECT WS-RESULT TO BE NUMERIC 700
+           EXPECT WS-CATEGORY TO BE 'STANDARD'
+
+       IGNORE
+       TESTCASE 'pending: negative amounts'
+           MOVE 0 TO WS-AMOUNT
+           EXPECT WS-RESULT TO BE ZEROS

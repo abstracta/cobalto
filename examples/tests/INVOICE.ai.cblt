@@ -1,0 +1,215 @@
+      * Generated suite (INVOICEAI): complements TSTINV. Covers the
+      * read that returns a record, the empty file, the format of the
+      * detail line and of the header, amount limits, the reset done
+      * by 1000-INIT and the close in 3000-END.
+      * DISCOUNT is always mocked so as not to depend on its rules.
+       TESTSUITE INVOICEAI 'Invoicing: missing branches and limits'
+       PROGRAM INVOICE
+
+       WORKING-STORAGE SECTION.
+       01  T-CAPTURED                PIC X(80).
+       01  T-CAPT-COUNT              PIC 9(3).
+       01  T-AMOUNT-IN               PIC 9(7)V99.
+
+       BEFORE-EACH
+           MOVE ZERO TO WS-TOTAL WS-READ-COUNT WS-LINE-COUNT
+           MOVE ZERO TO T-CAPT-COUNT T-AMOUNT-IN
+           MOVE SPACES TO T-CAPTURED
+           MOVE "N" TO WS-EOF
+       END-BEFORE
+
+       TESTCASE 'read with a record loads WS-CUST and adds one'
+           MOCK FILE CUST-FILE
+               ON READ
+                   EVALUATE CBLT-READ-COUNT
+                       WHEN 1
+                           MOVE "C001ACME      000123456" TO CUST-REC
+                       WHEN OTHER
+                           SET CBLT-AT-END TO TRUE
+                   END-EVALUATE
+           END-MOCK
+           MOVE 4 TO WS-READ-COUNT
+           PERFORM 2010-READ-CUST
+           EXPECT WS-C-ID TO BE 'C001'
+           EXPECT WS-C-NAME TO BE 'ACME'
+           EXPECT WS-C-AMOUNT TO BE NUMERIC 1234.56
+           EXPECT WS-READ-COUNT TO BE NUMERIC 5
+           EXPECT WS-END-OF-FILE TO BE FALSE
+           VERIFY READ CUST-FILE HAPPENED ONCE
+
+       TESTCASE 'empty file: process calculates and writes nothing'
+           MOCK FILE CUST-FILE
+               ON READ
+                   SET CBLT-AT-END TO TRUE
+           END-MOCK
+           MOCK FILE REPORT-FILE
+           END-MOCK
+           MOCK CALL 'DISCOUNT'
+               MOVE 1 TO WS-NET
+           END-MOCK
+           PERFORM 2000-PROCESS
+           EXPECT WS-END-OF-FILE TO BE TRUE
+           EXPECT WS-READ-COUNT TO BE ZEROS
+           EXPECT WS-LINE-COUNT TO BE ZEROS
+           EXPECT WS-TOTAL TO BE ZEROS
+           VERIFY READ CUST-FILE HAPPENED ONCE
+           VERIFY PARAGRAPH 2100-CALC NEVER HAPPENED
+           VERIFY PARAGRAPH 2200-WRITE-LINE NEVER HAPPENED
+           VERIFY WRITE REPORT-FILE NEVER HAPPENED
+           VERIFY CALL 'DISCOUNT' NEVER HAPPENED
+
+       TESTCASE 'process of one record builds the complete line'
+           MOCK FILE CUST-FILE
+               ON READ
+                   EVALUATE CBLT-READ-COUNT
+                       WHEN 1
+                           MOVE "C009GAMMA     000123456" TO CUST-REC
+                       WHEN OTHER
+                           SET CBLT-AT-END TO TRUE
+                   END-EVALUATE
+           END-MOCK
+           MOCK FILE REPORT-FILE
+               ON WRITE
+                   ADD 1 TO T-CAPT-COUNT
+                   MOVE REPORT-REC TO T-CAPTURED
+           END-MOCK
+           MOCK CALL 'DISCOUNT'
+               MOVE WS-AMOUNT TO T-AMOUNT-IN
+               MOVE 1111.11 TO WS-NET
+               MOVE 'TEST' TO WS-CATEGORY
+           END-MOCK
+           PERFORM 2000-PROCESS
+           EXPECT T-AMOUNT-IN TO BE NUMERIC 1234.56
+           EXPECT T-CAPTURED TO BE 'C009 GAMMA         1111.11 TEST'
+           EXPECT T-CAPT-COUNT TO BE NUMERIC 1
+           EXPECT WS-READ-COUNT TO BE NUMERIC 1
+           EXPECT WS-LINE-COUNT TO BE NUMERIC 1
+           EXPECT WS-TOTAL TO BE NUMERIC 1111.11
+           VERIFY READ CUST-FILE HAPPENED 2 TIMES
+           VERIFY CALL 'DISCOUNT' HAPPENED ONCE
+
+       TESTCASE 'calculation passes the amount and adds to the total'
+           MOCK CALL 'DISCOUNT'
+               MOVE WS-AMOUNT TO T-AMOUNT-IN
+               MOVE 250 TO WS-NET
+               MOVE 'MOCKED' TO WS-CATEGORY
+           END-MOCK
+           MOVE 300 TO WS-TOTAL
+           MOVE 1234.56 TO WS-C-AMOUNT
+           PERFORM 2100-CALC
+           EXPECT WS-AMOUNT TO BE NUMERIC 1234.56
+           EXPECT T-AMOUNT-IN TO BE NUMERIC 1234.56
+           EXPECT WS-TOTAL TO BE NUMERIC 550
+           VERIFY CALL 'DISCOUNT' HAPPENED ONCE
+
+       TESTCASE 'total adds two maximum nets without overflow'
+           MOCK CALL 'DISCOUNT'
+               MOVE 9999999.99 TO WS-NET
+               MOVE 'MAXIMUM' TO WS-CATEGORY
+           END-MOCK
+           MOVE 9999999.99 TO WS-C-AMOUNT
+           PERFORM 2100-CALC
+           PERFORM 2100-CALC
+           EXPECT WS-AMOUNT TO BE NUMERIC 9999999.99
+           EXPECT WS-TOTAL TO BE NUMERIC 19999999.98
+           VERIFY CALL 'DISCOUNT' HAPPENED 2 TIMES
+
+       TESTCASE 'detail line with format and counter'
+           MOCK FILE REPORT-FILE
+               ON WRITE
+                   MOVE REPORT-REC TO T-CAPTURED
+           END-MOCK
+           MOVE 'C003' TO WS-C-ID
+           MOVE 'DELTA' TO WS-C-NAME
+           MOVE 1600 TO WS-NET
+           MOVE 'PREMIUM' TO WS-CATEGORY
+           MOVE 7 TO WS-LINE-COUNT
+           PERFORM 2200-WRITE-LINE
+           EXPECT WS-L-NET TO BE '   1600.00'
+           EXPECT T-CAPTURED TO BE 'C003 DELTA         1600.00 PREMIUM'
+           EXPECT WS-LINE-COUNT TO BE NUMERIC 8
+           VERIFY WRITE REPORT-FILE HAPPENED ONCE
+
+       TESTCASE 'detail line with zero net'
+           MOCK FILE REPORT-FILE
+               ON WRITE
+                   MOVE REPORT-REC TO T-CAPTURED
+           END-MOCK
+           MOVE 'C000' TO WS-C-ID
+           MOVE 'ZERO' TO WS-C-NAME
+           MOVE ZERO TO WS-NET
+           MOVE SPACES TO WS-CATEGORY
+           PERFORM 2200-WRITE-LINE
+           EXPECT WS-L-NET TO BE '      0.00'
+           EXPECT T-CAPTURED TO BE 'C000 ZERO             0.00'
+           EXPECT WS-LINE-COUNT TO BE NUMERIC 1
+
+       TESTCASE 'detail line with net and fields at maximum'
+           MOCK FILE REPORT-FILE
+               ON WRITE
+                   MOVE REPORT-REC TO T-CAPTURED
+           END-MOCK
+           MOVE 'Z999' TO WS-C-ID
+           MOVE 'ZZZZZZZZZZ' TO WS-C-NAME
+           MOVE 9999999.99 TO WS-NET
+           MOVE 'CATEGORY01' TO WS-CATEGORY
+           PERFORM 2200-WRITE-LINE
+           EXPECT WS-L-NET TO BE '9999999.99'
+           EXPECT T-CAPTURED TO CONTAIN 'Z999 ZZZZZZZZZZ'
+           EXPECT T-CAPTURED TO CONTAIN '9999999.99 CATEGORY01'
+           EXPECT WS-LINE-COUNT TO BE NUMERIC 1
+
+       TESTCASE 'header with the date set and the rest blank'
+           MOCK FILE REPORT-FILE
+               ON WRITE
+                   MOVE REPORT-REC TO T-CAPTURED
+           END-MOCK
+           MOVE 991231 TO WS-DATE
+           MOVE 3 TO WS-LINE-COUNT
+           PERFORM 2500-WRITE-HEADER
+           EXPECT T-CAPTURED TO BE 'INVOICING   991231'
+           EXPECT WS-LINE-COUNT TO BE NUMERIC 4
+           VERIFY WRITE REPORT-FILE HAPPENED ONCE
+
+       TESTCASE 'header with a zero date'
+           MOCK FILE REPORT-FILE
+               ON WRITE
+                   MOVE REPORT-REC TO T-CAPTURED
+           END-MOCK
+           MOVE ZERO TO WS-DATE
+           PERFORM 2500-WRITE-HEADER
+           EXPECT T-CAPTURED TO BE 'INVOICING   000000'
+           EXPECT WS-LINE-COUNT TO BE NUMERIC 1
+
+       TESTCASE 'initialization resets counters and end of file'
+           MOCK CLOCK
+               DATE '000101'
+           END-MOCK
+           MOCK FILE CUST-FILE
+           END-MOCK
+           MOCK FILE REPORT-FILE
+           END-MOCK
+           MOVE 500 TO WS-TOTAL
+           MOVE 7 TO WS-READ-COUNT
+           MOVE 9 TO WS-LINE-COUNT
+           MOVE "Y" TO WS-EOF
+           PERFORM 1000-INIT
+           EXPECT WS-DATE TO BE NUMERIC 101
+           EXPECT WS-TOTAL TO BE ZEROS
+           EXPECT WS-READ-COUNT TO BE ZEROS
+           EXPECT WS-LINE-COUNT TO BE NUMERIC 1
+           EXPECT WS-END-OF-FILE TO BE FALSE
+           EXPECT WS-EOF TO BE 'N'
+           VERIFY OPEN REPORT-FILE HAPPENED ONCE
+           VERIFY WRITE REPORT-FILE HAPPENED ONCE
+
+       TESTCASE 'the end step closes both files once'
+           MOCK FILE CUST-FILE
+           END-MOCK
+           MOCK FILE REPORT-FILE
+           END-MOCK
+           PERFORM 3000-END
+           EXPECT WS-LINE-COUNT TO BE ZEROS
+           VERIFY CLOSE CUST-FILE HAPPENED ONCE
+           VERIFY CLOSE REPORT-FILE HAPPENED ONCE
+           VERIFY WRITE REPORT-FILE NEVER HAPPENED

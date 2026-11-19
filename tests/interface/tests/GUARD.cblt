@@ -1,0 +1,39 @@
+      * Regression for the guards after STOP RUN / GOBACK, for RUN,
+      * for VERIFY STOP and for test case classification. The last
+      * test case name is exactly 60 characters (CBLT-CASE-NAME limit).
+       TESTSUITE TSTGUARD 'guards after STOP'
+       PROGRAM GUARD
+
+       BEFORE-EACH
+           MOVE "A" TO WS-MODE
+           MOVE ZERO TO WS-STEP
+           MOVE SPACES TO WS-TRACE
+       END-BEFORE
+
+       TESTCASE 'normal path: final STOP RUN, every step'
+           RUN
+           EXPECT WS-STEP TO BE NUMERIC 4
+           EXPECT WS-TRACE TO BE 'WORKED'
+           VERIFY STOP HAPPENED ONCE
+
+       TESTCASE 'STOP RUN in the IF: rest of the paragraph does not run'
+           MOVE "X" TO WS-MODE
+           RUN
+           EXPECT WS-STEP TO BE NUMERIC 1
+           EXPECT WS-TRACE TO BE 'ABORT'
+           VERIFY STOP HAPPENED ONCE
+           VERIFY PARAGRAPH 1000-WORK NEVER HAPPENED
+
+       TESTCASE 'inner GOBACK: its paragraph and caller do not go on'
+           MOVE "G" TO WS-MODE
+           RUN
+           EXPECT WS-TRACE TO BE 'GOBACK'
+           EXPECT WS-STEP TO BE NUMERIC 2
+           EXPECT CBLT-STOPPED TO BE TRUE
+           VERIFY STOP HAPPENED ONCE
+           VERIFY PARAGRAPH 1000-WORK HAPPENED ONCE
+
+       TESTCASE 'solely through the interface: it stops once and nothing more'
+           RUN
+           EXPECT CBLT-STOPPED TO BE TRUE
+           VERIFY STOP HAPPENED ONCE

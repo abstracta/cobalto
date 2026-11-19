@@ -1,0 +1,8 @@
+{
+  "description": "Micro Focus / Rocket Visual COBOL. NOT verified: template.",
+  "results_org": "LINE SEQUENTIAL",
+  "results_format": "lines",
+  "results_path": "build/cblt-results.txt",
+  "compile": "cob -x -I {lib} {incl} -o {exe} {driver} {lib}/CBLTLIB.cbl {tests} {sources}",
+  "run": "{exe}"
+}

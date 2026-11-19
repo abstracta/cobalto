@@ -1,0 +1,20 @@
+      * Subprogram tested through its interface in the in-program copy:
+      * RUN USING loads the PROCEDURE DIVISION USING parameters, runs
+      * the entry and returns the fields (like a CALL BY REFERENCE).
+       TESTSUITE TSTDISCI 'DISCOUNT through its interface (RUN USING)'
+       PROGRAM DISCOUNT
+
+       WORKING-STORAGE SECTION.
+       01  T-RESULT                  PIC 9(7)V99.
+       01  T-CATEGORY                PIC X(10).
+
+       TESTCASE 'premium with a literal as input'
+           RUN USING 2000 T-RESULT T-CATEGORY
+           EXPECT T-RESULT TO BE NUMERIC 1600
+           EXPECT T-CATEGORY TO BE 'PREMIUM'
+           VERIFY STOP HAPPENED ONCE
+
+       TESTCASE 'basic gets no discount'
+           RUN USING 100 T-RESULT T-CATEGORY
+           EXPECT T-RESULT TO BE NUMERIC 100
+           EXPECT T-CATEGORY TO BE 'BASIC'

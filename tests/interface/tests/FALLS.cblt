@@ -1,0 +1,16 @@
+      * Regression for the limit of RUN: it executes only the entry;
+      * a flow that falls through paragraphs needs PERFORM THRU.
+       TESTSUITE TSTFALLS 'fall-through from one paragraph to the next'
+       PROGRAM FALLS
+
+       TESTCASE 'RUN executes only the first paragraph'
+           MOVE ZERO TO WS-STEP
+           RUN
+           EXPECT WS-STEP TO BE NUMERIC 1
+           VERIFY STOP NEVER HAPPENED
+
+       TESTCASE 'PERFORM THRU covers the fall-through and reaches STOP'
+           MOVE ZERO TO WS-STEP
+           PERFORM A-START THRU B-NEXT
+           EXPECT WS-STEP TO BE NUMERIC 2
+           VERIFY STOP HAPPENED ONCE

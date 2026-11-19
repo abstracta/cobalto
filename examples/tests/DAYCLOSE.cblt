@@ -1,0 +1,96 @@
+      * In-program suite on DAYCLOSE: the daily close of an account
+      * with a legacy paragraph (GO TO, IFs closed by the period). The
+      * last two cases document how the COMP fields behave with the
+      * current compiler (-std=default): they are the ones that change
+      * with the gnucobol-ibm and gnucobol-mf profiles.
+       TESTSUITE TSTCLOSE 'Daily account close (in-program)'
+       PROGRAM DAYCLOSE
+
+       BEFORE-EACH
+      * a typical day: opening balance 1000, two debits, one credit and
+      * one movement with a zero amount, which is rejected
+           MOVE 1000 TO WS-OPENING-BALANCE
+           MOVE ZERO TO WS-MOV-COUNT
+           MOVE 4 TO WS-MOV-TOTAL
+           MOVE "D" TO WS-MOV-TYPE(1)
+           MOVE "TLR" TO WS-MOV-CHANNEL(1)
+           MOVE 250.50 TO WS-MOV-AMOUNT(1)
+           MOVE "C" TO WS-MOV-TYPE(2)
+           MOVE "TRF" TO WS-MOV-CHANNEL(2)
+           MOVE 3000 TO WS-MOV-AMOUNT(2)
+           MOVE "D" TO WS-MOV-TYPE(3)
+           MOVE "ATM" TO WS-MOV-CHANNEL(3)
+           MOVE 1200 TO WS-MOV-AMOUNT(3)
+           MOVE "D" TO WS-MOV-TYPE(4)
+           MOVE "TLR" TO WS-MOV-CHANNEL(4)
+           MOVE ZERO TO WS-MOV-AMOUNT(4)
+           MOVE SPACES TO WS-MOV-STATUS(1) WS-MOV-STATUS(2)
+                          WS-MOV-STATUS(3) WS-MOV-STATUS(4)
+       END-BEFORE
+
+       TESTCASE 'daily close with debits, credits and one rejection'
+           PERFORM CLOSE-DAY THRU CLOSE-EXIT
+           EXPECT WS-TOTAL-DEBITS TO BE NUMERIC 1450.50
+           EXPECT WS-TOTAL-CREDITS TO BE NUMERIC 3000
+           EXPECT WS-NET-BALANCE TO BE NUMERIC 2549.50
+           EXPECT WS-MOV-COUNT TO BE NUMERIC 3
+           EXPECT WS-REJECTS TO BE NUMERIC 1
+           EXPECT WS-MOV-STATUS(1) TO BE 'P'
+           EXPECT WS-MOV-STATUS(4) TO BE 'Z'
+           EXPECT WS-CTL-FLAG TO BE 'OK'
+           VERIFY PARAGRAPH CLOSE-LOOP HAPPENED 5 TIMES
+           VERIFY PARAGRAPH CLOSE-TRAILER HAPPENED ONCE
+
+       TESTCASE 'ATM debit over the limit: rejected'
+           MOVE 50000.01 TO WS-MOV-AMOUNT(3)
+           PERFORM CLOSE-DAY THRU CLOSE-EXIT
+           EXPECT WS-MOV-STATUS(3) TO BE 'L'
+           EXPECT WS-REJECTS TO BE NUMERIC 2
+           EXPECT WS-TOTAL-DEBITS TO BE NUMERIC 250.50
+           EXPECT WS-MOV-COUNT TO BE NUMERIC 2
+
+       TESTCASE 'an unknown movement type is rejected'
+           MOVE "X" TO WS-MOV-TYPE(2)
+           PERFORM CLOSE-DAY THRU CLOSE-EXIT
+           EXPECT WS-MOV-STATUS(2) TO BE 'T'
+           EXPECT WS-TOTAL-CREDITS TO BE ZEROS
+           EXPECT WS-REJECTS TO BE NUMERIC 2
+
+       TESTCASE 'the balance ends up overdrawn'
+           MOVE 100 TO WS-OPENING-BALANCE
+           MOVE ZERO TO WS-MOV-AMOUNT(2)
+           PERFORM CLOSE-DAY THRU CLOSE-EXIT
+           EXPECT WS-NET-BALANCE TO BE NUMERIC -1350.50
+           EXPECT WS-NET-BALANCE TO BE LESS THAN ZERO
+           EXPECT WS-CTL-FLAG TO BE 'OVERDRAWN'
+           EXPECT WS-CTL-TOTAL TO BE NUMERIC -1350.50
+
+       TESTCASE 'no movements: the balance does not change'
+           MOVE ZERO TO WS-MOV-TOTAL
+           PERFORM CLOSE-DAY THRU CLOSE-EXIT
+           EXPECT WS-NET-BALANCE TO BE NUMERIC 1000
+           EXPECT WS-MOV-COUNT TO BE ZEROS
+           VERIFY PARAGRAPH CLOSE-LOOP HAPPENED ONCE
+
+       TESTCASE 'the batch counter wraps to zero after 9999'
+      * WS-MOV-COUNT is PIC 9(4) COMP and carries over from the previous
+      * day. The system that reads the control record expects four
+      * digits: with three valid movements, 9999 + 3 = 10002 is stored
+      * as 0002. With -std=ibm or -std=mf (binary-truncate: no) the
+      * field holds 10002 and this case fails.
+           MOVE 9999 TO WS-MOV-COUNT
+           PERFORM CLOSE-DAY THRU CLOSE-EXIT
+           EXPECT WS-MOV-COUNT TO BE NUMERIC 2
+           EXPECT WS-CTL-COUNT TO BE NUMERIC 2
+
+       TESTCASE 'the control record is 11 bytes long'
+      * COMP fields of 1, 2 and 8 bytes: 11 bytes with -std=default.
+      * With -std=ibm (binary-size 2-4-8), 12; with -std=mf (1--8), 9.
+      * If it changes, so does the file the reconciliation system reads.
+           PERFORM CLOSE-DAY THRU CLOSE-EXIT
+           EXPECT WS-CTL-LEN TO BE NUMERIC 11
+
+       IGNORE
+       TESTCASE 'pending: movements in foreign currency'
+           PERFORM CLOSE-DAY THRU CLOSE-EXIT
+           EXPECT WS-NET-BALANCE TO BE ZEROS

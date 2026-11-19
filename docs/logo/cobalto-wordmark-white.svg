@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 916 256" width="916" height="256" role="img" aria-label="Cobalto">
+  <g transform="translate(0 0)" fill="none" stroke="#FFFFFF" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M145.2 174.3 A72 72 0 1 1 145.2 81.7"/>
+    <circle cx="249" cy="150" r="50"/>
+    <path d="M353 56 V200"/><circle cx="403" cy="150" r="50"/>
+    <circle cx="557" cy="150" r="50"/><path d="M607 100 V200"/>
+    <path d="M661 56 V200"/>
+    <path d="M715 76 V170 a30 30 0 0 0 30 30"/><path d="M687 100 H745"/>
+    <circle cx="836" cy="150" r="50" stroke="#FFFFFF"/>
+  </g>
+</svg>

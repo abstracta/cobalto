@@ -1,0 +1,142 @@
+      * Second in-program suite: the MAIN paragraph of LEGACY gathers
+      * the hardest cases for the rewriter (statements closed only by
+      * the period, nested phrases, IF/ELSE IF, inline PERFORM, indexed
+      * file, dynamic CALL, clock). It is the regression of the parser.
+       TESTSUITE TSTLEG 'Legacy (in-program on LEGACY)'
+       PROGRAM LEGACY
+
+       BEFORE-EACH
+           MOVE ZERO TO WS-B
+           MOVE SPACES TO WS-GRP WS-TIME
+           MOVE "N" TO END-OF-FILE
+       END-BEFORE
+
+       TESTCASE 'main fully mocked: the original does not run'
+           MOCK PARAGRAPH MAIN
+               MOVE 7 TO WS-B
+           END-MOCK
+           MOCK FILE MASTER-FILE
+           END-MOCK
+           PERFORM MAIN
+           EXPECT WS-B TO BE NUMERIC 7
+           VERIFY PARAGRAPH MAIN HAPPENED ONCE
+           VERIFY OPEN MASTER-FILE NEVER HAPPENED
+           VERIFY CALL WS-PROG NEVER HAPPENED
+
+       TESTCASE 'original main with file, dynamic CALL and clock mocked'
+           MOCK FILE MASTER-FILE
+               ON READ
+                   MOVE "K001" TO M-KEY
+                   MOVE SPACES TO M-DATA
+           END-MOCK
+           MOCK CALL WS-PROG
+               MOVE 1 TO WS-B
+           END-MOCK
+           MOCK CLOCK
+               TIME '12345678'
+           END-MOCK
+           PERFORM MAIN
+           EXPECT WS-KEY TO BE 'K001'
+           EXPECT WS-B TO BE NUMERIC 4
+           EXPECT WS-TIME TO BE '12345678'
+           EXPECT WS-FS TO BE '00'
+           EXPECT END-OF-FILE TO BE 'N'
+           VERIFY PARAGRAPH MAIN HAPPENED ONCE
+           VERIFY CALL WS-PROG NEVER HAPPENED
+           VERIFY CLOCK HAPPENED 3 TIMES
+           VERIFY READ MASTER-FILE HAPPENED ONCE
+           VERIFY START MASTER-FILE HAPPENED ONCE
+           VERIFY DELETE MASTER-FILE HAPPENED ONCE
+           VERIFY OPEN MASTER-FILE HAPPENED ONCE
+           VERIFY CLOSE MASTER-FILE HAPPENED ONCE
+           VERIFY WRITE MASTER-FILE NEVER HAPPENED
+
+       TESTCASE 'CALL path: the key matches and the mock adds'
+           MOCK FILE MASTER-FILE
+               ON READ
+                   MOVE "XXXX" TO M-KEY
+           END-MOCK
+           MOCK CALL WS-PROG
+               EXPECT WS-KEY TO BE 'XXXX'
+           END-MOCK
+           MOCK CLOCK
+               TIME '00000000'
+           END-MOCK
+           PERFORM MAIN
+      * WS-B: 1 for the key, +1 from NOT ON EXCEPTION of the mocked CALL
+           EXPECT WS-B TO BE NUMERIC 2
+           VERIFY CALL WS-PROG HAPPENED ONCE
+           VERIFY REWRITE MASTER-FILE HAPPENED ONCE
+           VERIFY WRITE MASTER-FILE NEVER HAPPENED
+
+       TESTCASE 'invalid read: INVALID KEY of the original'
+           MOCK FILE MASTER-FILE
+               ON READ AT END
+           END-MOCK
+           MOCK CLOCK
+               TIME '00000000'
+           END-MOCK
+           PERFORM MAIN
+           EXPECT END-OF-FILE TO BE 'Y'
+           EXPECT WS-FS TO BE '00'
+           VERIFY READ MASTER-FILE HAPPENED ONCE
+
+      * The next two tests do not mock MASTER-FILE: they use the real
+      * indexed file (build/master.dat), which each case leaves with a
+      * single record of key "XXXX", to reach the INVALID KEY clauses of
+      * WRITE, REWRITE, START and DELETE, which a mock cannot trigger.
+       TESTCASE 'duplicate key: WRITE and START take INVALID KEY'
+           OPEN OUTPUT MASTER-FILE
+           MOVE "XXXX" TO M-KEY
+           MOVE SPACES TO M-DATA
+           WRITE M-REC
+           CLOSE MASTER-FILE
+           MOCK CALL WS-PROG
+      * the called program leaves WS-B at 0; the NOT ON EXCEPTION (which
+      * GnuCOBOL binds to the preceding DISPLAY, not to the CALL) raises
+      * it to 1 and MAIN takes WHEN 1: WRITE with the key that exists
+               MOVE 0 TO WS-B
+           END-MOCK
+           MOCK CLOCK
+               TIME '00000000'
+           END-MOCK
+      * the WRITE repeats the key and START finds no greater one, so
+      * MAIN jumps to EXIT-PARA with no DELETE or CLOSE. THRU keeps that
+      * GO TO inside the range of the PERFORM; with a bare PERFORM MAIN
+      * the flow would fall off the end of the program and Cobalto would
+      * report it as a failure of the case.
+           PERFORM MAIN THRU EXIT-PARA
+           EXPECT WS-KEY TO BE 'XXXX'
+           EXPECT WS-B TO BE NUMERIC 1
+           EXPECT WS-FS TO BE '23'
+           VERIFY CALL WS-PROG HAPPENED ONCE
+           VERIFY WRITE MASTER-FILE HAPPENED ONCE
+           VERIFY PARAGRAPH EXIT-PARA HAPPENED ONCE
+           VERIFY DELETE MASTER-FILE NEVER HAPPENED
+           CLOSE MASTER-FILE
+
+       TESTCASE 'changed key: REWRITE and DELETE take INVALID KEY'
+           OPEN OUTPUT MASTER-FILE
+           MOVE "XXXX" TO M-KEY
+           MOVE SPACES TO M-DATA
+           WRITE M-REC
+           CLOSE MASTER-FILE
+           MOCK CALL WS-PROG
+      * the called program changes the key of the record just read: the
+      * REWRITE no longer finds it, START does find a greater one and
+      * the DELETE does not find it either
+               MOVE "AAAA" TO M-KEY
+           END-MOCK
+           MOCK CLOCK
+               TIME '00000000'
+           END-MOCK
+           PERFORM MAIN
+           EXPECT WS-B TO BE NUMERIC 2
+      * the "E" left by the REWRITE is overwritten by the START, the
+      * DELETE and the CLOSE: the proof of the path is branch coverage
+           EXPECT WS-FS TO BE '00'
+           VERIFY CALL WS-PROG HAPPENED ONCE
+           VERIFY REWRITE MASTER-FILE HAPPENED ONCE
+           VERIFY DELETE MASTER-FILE HAPPENED ONCE
+           VERIFY CLOSE MASTER-FILE HAPPENED ONCE
+           VERIFY PARAGRAPH EXIT-PARA NEVER HAPPENED

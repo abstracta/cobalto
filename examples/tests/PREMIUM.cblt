@@ -1,0 +1,96 @@
+      * External suite on PREMIUM: rate by age band (table with OCCURS
+      * and SEARCH), loading by coverage (SEARCH ALL), minimum premium
+      * and return codes.
+       TESTSUITE TSTPREM 'Insurance: annual premium by age and coverage'
+
+       WORKING-STORAGE SECTION.
+       01  WS-QUOTE.
+           05  WS-AGE                PIC 9(3).
+           05  WS-COVERAGE           PIC X(3).
+           05  WS-SUM-INSURED        PIC 9(9)V99.
+           05  WS-RATE-PER-MIL       PIC 9(2)V99.
+           05  WS-LOADING-PCT        PIC 9(3)V99.
+           05  WS-PREMIUM            PIC 9(9)V99.
+           05  WS-RETURN-CODE        PIC XX.
+               88  WS-OK             VALUE "00".
+               88  WS-AGE-NOT-COVERED VALUE "10".
+       01  WS-PREMIUM-STD            PIC 9(9)V99.
+
+       BEFORE-EACH
+      * typical quote: age 35, standard coverage, 200,000 sum insured
+           MOVE 35 TO WS-AGE
+           MOVE "STD" TO WS-COVERAGE
+           MOVE 200000 TO WS-SUM-INSURED
+           MOVE SPACES TO WS-RETURN-CODE
+       END-BEFORE
+
+       TESTCASE 'age 35 with standard coverage: 1.80 per mil plus 15%'
+           CALL "PREMIUM" USING WS-QUOTE
+           EXPECT WS-OK TO BE TRUE
+           EXPECT WS-RATE-PER-MIL TO BE NUMERIC 1.80
+           EXPECT WS-LOADING-PCT TO BE NUMERIC 15
+           EXPECT WS-PREMIUM TO BE NUMERIC 414.00
+
+       TESTCASE 'band limit: ages 30 and 31 pay different rates'
+           MOVE 30 TO WS-AGE
+           CALL "PREMIUM" USING WS-QUOTE
+           EXPECT WS-RATE-PER-MIL TO BE NUMERIC 1.20
+           EXPECT WS-PREMIUM TO BE NUMERIC 276.00
+           MOVE 31 TO WS-AGE
+           CALL "PREMIUM" USING WS-QUOTE
+           EXPECT WS-RATE-PER-MIL TO BE NUMERIC 1.80
+           EXPECT WS-PREMIUM TO BE NUMERIC 414.00
+
+       TESTCASE 'full coverage loads 35% over basic'
+           MOVE "BAS" TO WS-COVERAGE
+           CALL "PREMIUM" USING WS-QUOTE
+           EXPECT WS-LOADING-PCT TO BE ZEROS
+           EXPECT WS-PREMIUM TO BE NUMERIC 360.00
+           MOVE "FUL" TO WS-COVERAGE
+           CALL "PREMIUM" USING WS-QUOTE
+           EXPECT WS-LOADING-PCT TO BE NUMERIC 35
+           EXPECT WS-PREMIUM TO BE NUMERIC 486.00
+
+       TESTCASE 'last band: age 80 with full coverage'
+           MOVE 80 TO WS-AGE
+           MOVE "FUL" TO WS-COVERAGE
+           MOVE 1000000 TO WS-SUM-INSURED
+           CALL "PREMIUM" USING WS-QUOTE
+           EXPECT WS-RATE-PER-MIL TO BE NUMERIC 14.50
+           EXPECT WS-PREMIUM TO BE NUMERIC 19575.00
+           EXPECT WS-PREMIUM TO BE GREATER THAN WS-SUM-INSURED / 100
+
+       TESTCASE 'small sum insured: the minimum premium is charged'
+           MOVE 25 TO WS-AGE
+           MOVE "BAS" TO WS-COVERAGE
+           MOVE 10000 TO WS-SUM-INSURED
+           CALL "PREMIUM" USING WS-QUOTE
+           EXPECT WS-OK TO BE TRUE
+           EXPECT WS-PREMIUM TO BE NUMERIC 50.00
+
+       TESTCASE 'age outside the table returns 10'
+           MOVE 17 TO WS-AGE
+           CALL "PREMIUM" USING WS-QUOTE
+           EXPECT WS-AGE-NOT-COVERED TO BE TRUE
+           EXPECT WS-PREMIUM TO BE ZEROS
+           MOVE 81 TO WS-AGE
+           CALL "PREMIUM" USING WS-QUOTE
+           EXPECT WS-RETURN-CODE TO BE '10'
+
+       TESTCASE 'unknown coverage returns 20'
+           MOVE "XXX" TO WS-COVERAGE
+           CALL "PREMIUM" USING WS-QUOTE
+           EXPECT WS-RETURN-CODE TO BE '20'
+           EXPECT WS-RATE-PER-MIL TO BE NUMERIC 1.80
+           EXPECT WS-PREMIUM TO BE ZEROS
+
+       TESTCASE 'zero sum insured returns 30'
+           MOVE ZERO TO WS-SUM-INSURED
+           CALL "PREMIUM" USING WS-QUOTE
+           EXPECT WS-RETURN-CODE TO BE '30'
+           EXPECT WS-OK TO BE FALSE
+
+       IGNORE
+       TESTCASE 'pending: loading for high-risk activity'
+           CALL "PREMIUM" USING WS-QUOTE
+           EXPECT WS-PREMIUM TO BE ZEROS

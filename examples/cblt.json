@@ -1,0 +1,13 @@
+{
+  "profile": "gnucobol",
+  "sources": [
+    "src/*.cbl"
+  ],
+  "tests": [
+    "tests/*.cblt",
+    "tests/*.cbl"
+  ],
+  "copybooks": [
+    "src"
+  ]
+}

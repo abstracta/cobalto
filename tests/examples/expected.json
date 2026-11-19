@@ -1,0 +1,187 @@
+{
+  "gnucobol": {
+    "exit": 1,
+    "totals": {
+      "cases": 105,
+      "asserts": 415,
+      "failed_asserts": 2,
+      "failed_cases": 2,
+      "skipped": 6,
+      "errors": 0,
+      "interface": 46,
+      "internal": 58
+    },
+    "not_passed": {
+      "TSTCLOSE / pending: movements in foreign currency": "skipped",
+      "TSTDISC / intentional failure to show the report": "failed",
+      "TSTDISC / pending: negative amounts": "skipped",
+      "TSTINV / pending: close with a file error": "skipped",
+      "TSTBATCH / the control record counts only the transactions": "failed",
+      "TSTBATCH / pending: same-day rerun (no rule yet)": "skipped",
+      "TSTLOAN / pending: variable rate by tiers (no rule yet)": "skipped",
+      "TSTPREM / pending: loading for high-risk activity": "skipped"
+    },
+    "missing_suites": 0,
+    "coverage": {
+      "paragraphs": [
+        34,
+        35
+      ],
+      "statements": [
+        218,
+        220
+      ],
+      "branches": [
+        109,
+        109
+      ]
+    }
+  },
+  "gnucobol-ibm": {
+    "exit": 1,
+    "totals": {
+      "cases": 105,
+      "asserts": 415,
+      "failed_asserts": 12,
+      "failed_cases": 7,
+      "skipped": 6,
+      "errors": 0,
+      "interface": 46,
+      "internal": 58
+    },
+    "not_passed": {
+      "TSTCLOSE / the batch counter wraps to zero after 9999": "failed",
+      "TSTCLOSE / the control record is 11 bytes long": "failed",
+      "TSTCLOSE / pending: movements in foreign currency": "skipped",
+      "TSTDISC / intentional failure to show the report": "failed",
+      "TSTDISC / pending: negative amounts": "skipped",
+      "TSTINV / pending: close with a file error": "skipped",
+      "TSTBATCH / interface: master file goes in, transactions come out": "failed",
+      "TSTBATCH / two active loans with the real LOANCALC": "failed",
+      "TSTBATCH / the control record counts only the transactions": "failed",
+      "TSTBATCH / pending: same-day rerun (no rule yet)": "skipped",
+      "TSTLOAN / installment for 100,000 at 36% a year over 12 months": "failed",
+      "TSTLOAN / pending: variable rate by tiers (no rule yet)": "skipped",
+      "TSTPREM / pending: loading for high-risk activity": "skipped"
+    },
+    "missing_suites": 0,
+    "coverage": {
+      "paragraphs": [
+        34,
+        35
+      ],
+      "statements": [
+        218,
+        220
+      ],
+      "branches": [
+        109,
+        109
+      ]
+    }
+  },
+  "gnucobol-mf": {
+    "exit": 1,
+    "totals": {
+      "cases": 105,
+      "asserts": 415,
+      "failed_asserts": 5,
+      "failed_cases": 4,
+      "skipped": 6,
+      "errors": 0,
+      "interface": 46,
+      "internal": 58
+    },
+    "not_passed": {
+      "TSTCLOSE / the batch counter wraps to zero after 9999": "failed",
+      "TSTCLOSE / the control record is 11 bytes long": "failed",
+      "TSTCLOSE / pending: movements in foreign currency": "skipped",
+      "TSTDISC / intentional failure to show the report": "failed",
+      "TSTDISC / pending: negative amounts": "skipped",
+      "TSTINV / pending: close with a file error": "skipped",
+      "TSTBATCH / the control record counts only the transactions": "failed",
+      "TSTBATCH / pending: same-day rerun (no rule yet)": "skipped",
+      "TSTLOAN / pending: variable rate by tiers (no rule yet)": "skipped",
+      "TSTPREM / pending: loading for high-risk activity": "skipped"
+    },
+    "missing_suites": 0,
+    "coverage": {
+      "paragraphs": [
+        34,
+        35
+      ],
+      "statements": [
+        218,
+        220
+      ],
+      "branches": [
+        109,
+        109
+      ]
+    }
+  },
+  "gnucobol-coverage": {
+    "exit": 1,
+    "totals": {
+      "cases": 105,
+      "asserts": 415,
+      "failed_asserts": 2,
+      "failed_cases": 2,
+      "skipped": 6,
+      "errors": 0,
+      "interface": 46,
+      "internal": 58
+    },
+    "not_passed": {
+      "TSTCLOSE / pending: movements in foreign currency": "skipped",
+      "TSTDISC / intentional failure to show the report": "failed",
+      "TSTDISC / pending: negative amounts": "skipped",
+      "TSTINV / pending: close with a file error": "skipped",
+      "TSTBATCH / the control record counts only the transactions": "failed",
+      "TSTBATCH / pending: same-day rerun (no rule yet)": "skipped",
+      "TSTLOAN / pending: variable rate by tiers (no rule yet)": "skipped",
+      "TSTPREM / pending: loading for high-risk activity": "skipped"
+    },
+    "missing_suites": 0
+  },
+  "remote-sim": {
+    "exit": 1,
+    "totals": {
+      "cases": 105,
+      "asserts": 415,
+      "failed_asserts": 12,
+      "failed_cases": 4,
+      "skipped": 6,
+      "errors": 0,
+      "interface": 46,
+      "internal": 58
+    },
+    "not_passed": {
+      "TSTCLOSE / pending: movements in foreign currency": "skipped",
+      "TSTDISC / intentional failure to show the report": "failed",
+      "TSTDISC / pending: negative amounts": "skipped",
+      "TSTINV / pending: close with a file error": "skipped",
+      "TSTLEG / duplicate key: WRITE and START take INVALID KEY": "failed",
+      "TSTLEG / changed key: REWRITE and DELETE take INVALID KEY": "failed",
+      "TSTBATCH / the control record counts only the transactions": "failed",
+      "TSTBATCH / pending: same-day rerun (no rule yet)": "skipped",
+      "TSTLOAN / pending: variable rate by tiers (no rule yet)": "skipped",
+      "TSTPREM / pending: loading for high-risk activity": "skipped"
+    },
+    "missing_suites": 0,
+    "coverage": {
+      "paragraphs": [
+        34,
+        35
+      ],
+      "statements": [
+        214,
+        220
+      ],
+      "branches": [
+        105,
+        109
+      ]
+    }
+  }
+}

@@ -1,0 +1,131 @@
+      * External suite on LOANCALC: the installment of a loan under the
+      * French system, the total interest, the first due date and the
+      * return codes. It is the suite whose results change when it is
+      * compiled with another dialect.
+       TESTSUITE TSTLOAN 'Loans: installment, interest and due date'
+
+       WORKING-STORAGE SECTION.
+       01  WS-LOAN.
+           05  WS-PRINCIPAL          PIC 9(9)V99.
+           05  WS-ANNUAL-RATE        PIC 9(2)V9(4).
+           05  WS-TERM-MONTHS        PIC 9(3).
+           05  WS-START-DATE         PIC 9(8).
+           05  WS-INSTALLMENT        PIC 9(9)V99.
+           05  WS-TOTAL-INTEREST     PIC S9(9)V99.
+           05  WS-FIRST-DUE          PIC 9(8).
+           05  WS-RETURN-CODE        PIC XX.
+               88  WS-OK             VALUE "00".
+               88  WS-BAD-DATE       VALUE "40".
+       01  WS-INTEREST-12            PIC S9(9)V99.
+
+       BEFORE-EACH
+      * a typical loan: 100,000 at 36% a year in 12 installments,
+      * granted on January 31, 2026
+           MOVE 100000 TO WS-PRINCIPAL
+           MOVE 0.36 TO WS-ANNUAL-RATE
+           MOVE 12 TO WS-TERM-MONTHS
+           MOVE 20260131 TO WS-START-DATE
+           MOVE SPACES TO WS-RETURN-CODE
+       END-BEFORE
+
+       TESTCASE 'installment for 100,000 at 36% a year over 12 months'
+           CALL "LOANCALC" USING WS-LOAN
+           EXPECT WS-RETURN-CODE TO BE '00'
+           EXPECT WS-OK TO BE TRUE
+           EXPECT WS-INSTALLMENT TO BE NUMERIC 10046.21
+           EXPECT WS-TOTAL-INTEREST TO BE NUMERIC 20554.52
+           DISPLAY "installment: " WS-INSTALLMENT
+               " interest: " WS-TOTAL-INTEREST
+
+       TESTCASE 'first due date: from January 31 to February 28'
+           CALL "LOANCALC" USING WS-LOAN
+           EXPECT WS-FIRST-DUE TO BE NUMERIC 20260228
+
+       TESTCASE 'first due date in a leap year'
+           MOVE 20280131 TO WS-START-DATE
+           CALL "LOANCALC" USING WS-LOAN
+           EXPECT WS-FIRST-DUE TO BE NUMERIC 20280229
+
+       TESTCASE 'first due date rolls from December to January'
+           MOVE 20261215 TO WS-START-DATE
+           CALL "LOANCALC" USING WS-LOAN
+           EXPECT WS-FIRST-DUE TO BE NUMERIC 20270115
+
+       TESTCASE 'zero rate: installment is principal over term'
+           MOVE ZERO TO WS-ANNUAL-RATE
+           CALL "LOANCALC" USING WS-LOAN
+           EXPECT WS-INSTALLMENT TO BE NUMERIC 8333.33
+      * 12 installments of 8333.33 add up to 99999.96: rounding leaves 4
+      * cents to the customer, which the business adjusts in the last
+           EXPECT WS-TOTAL-INTEREST TO BE NUMERIC -0.04
+
+       TESTCASE 'longer term, more interest'
+           CALL "LOANCALC" USING WS-LOAN
+           MOVE WS-TOTAL-INTEREST TO WS-INTEREST-12
+           MOVE 24 TO WS-TERM-MONTHS
+           CALL "LOANCALC" USING WS-LOAN
+           EXPECT WS-INSTALLMENT TO BE LESS THAN 10046.21
+           EXPECT WS-TOTAL-INTEREST TO BE GREATER THAN WS-INTEREST-12
+           EXPECT WS-TOTAL-INTEREST TO BE BETWEEN 40000 AND 45000
+
+       TESTCASE 'zero principal returns 10 and calculates nothing'
+           MOVE ZERO TO WS-PRINCIPAL
+           CALL "LOANCALC" USING WS-LOAN
+           EXPECT WS-RETURN-CODE TO BE '10'
+           EXPECT WS-INSTALLMENT TO BE ZEROS
+           EXPECT WS-FIRST-DUE TO BE ZEROS
+
+       TESTCASE 'term out of range returns 20'
+           MOVE ZERO TO WS-TERM-MONTHS
+           CALL "LOANCALC" USING WS-LOAN
+           EXPECT WS-RETURN-CODE TO BE '20'
+           MOVE 361 TO WS-TERM-MONTHS
+           CALL "LOANCALC" USING WS-LOAN
+           EXPECT WS-RETURN-CODE TO BE '20'
+           MOVE 360 TO WS-TERM-MONTHS
+           CALL "LOANCALC" USING WS-LOAN
+           EXPECT WS-RETURN-CODE TO BE '00'
+
+       TESTCASE 'annual rate above 200% returns 30'
+           MOVE 2.01 TO WS-ANNUAL-RATE
+           CALL "LOANCALC" USING WS-LOAN
+           EXPECT WS-RETURN-CODE TO BE '30'
+           EXPECT WS-INSTALLMENT TO BE ZEROS
+
+       TESTCASE 'invalid start date returns 40'
+           MOVE 20260230 TO WS-START-DATE
+           CALL "LOANCALC" USING WS-LOAN
+           EXPECT WS-BAD-DATE TO BE TRUE
+           MOVE 20261301 TO WS-START-DATE
+           CALL "LOANCALC" USING WS-LOAN
+           EXPECT WS-RETURN-CODE TO BE '40'
+           EXPECT WS-OK TO BE FALSE
+
+       TESTCASE 'day zero in the date returns 40'
+           MOVE 20260100 TO WS-START-DATE
+           CALL "LOANCALC" USING WS-LOAN
+           EXPECT WS-RETURN-CODE TO BE '40'
+           EXPECT WS-INSTALLMENT TO BE ZEROS
+
+       TESTCASE 'month zero in the date returns 40'
+           MOVE 20260015 TO WS-START-DATE
+           CALL "LOANCALC" USING WS-LOAN
+           EXPECT WS-RETURN-CODE TO BE '40'
+
+       TESTCASE '1900 is not a leap year: February 29 is invalid'
+      * divisible by 4 and by 100 but not by 400
+           MOVE 19000229 TO WS-START-DATE
+           CALL "LOANCALC" USING WS-LOAN
+           EXPECT WS-RETURN-CODE TO BE '40'
+
+       TESTCASE '2000 is a leap year: February 29 is due on March 29'
+      * divisible by 400
+           MOVE 20000229 TO WS-START-DATE
+           CALL "LOANCALC" USING WS-LOAN
+           EXPECT WS-RETURN-CODE TO BE '00'
+           EXPECT WS-FIRST-DUE TO BE NUMERIC 20000329
+
+       IGNORE
+       TESTCASE 'pending: variable rate by tiers (no rule yet)'
+           CALL "LOANCALC" USING WS-LOAN
+           EXPECT WS-INSTALLMENT TO BE ZEROS

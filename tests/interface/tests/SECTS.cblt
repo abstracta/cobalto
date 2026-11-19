@@ -1,0 +1,78 @@
+      * Regression: RUN with a SECTION entry, guards on multi-line
+      * statements with conditional phrases and on a simulated READ,
+      * STOP inside a mocked paragraph, GOBACK in a section with a
+      * fall-through (documented limit: fall-through is not stopped).
+       TESTSUITE TSTSECTS 'sections, multi-line and a simulated file'
+       PROGRAM SECTS
+
+       BEFORE-EACH
+           MOVE "A" TO WS-MODE
+           MOVE ZERO TO WS-STEP WS-COUNT
+           MOVE "N" TO WS-EOF
+           MOVE SPACES TO WS-TRACE WS-IN-STATUS
+           MOCK FILE IN-FILE
+               ON READ
+                   EVALUATE CBLT-READ-COUNT
+                       WHEN 1 MOVE "ONE" TO IN-REC
+                       WHEN 2 MOVE "TWO" TO IN-REC
+                       WHEN OTHER SET CBLT-AT-END TO TRUE
+                   END-EVALUATE
+           END-MOCK
+       END-BEFORE
+
+       TESTCASE 'normal path: two records, sections run in full'
+           RUN
+           EXPECT WS-COUNT TO BE NUMERIC 2
+           EXPECT WS-STEP TO BE NUMERIC 3
+           EXPECT WS-TRACE TO BE 'DETAIL DONE'
+           VERIFY READ IN-FILE HAPPENED 3 TIMES
+           VERIFY CLOSE IN-FILE HAPPENED ONCE
+           VERIFY STOP HAPPENED ONCE
+
+       TESTCASE 'OPEN fails: STOP at the start, nothing after it runs'
+           MOCK FILE IN-FILE
+               ON OPEN
+                   MOVE "35" TO WS-IN-STATUS
+               ON READ
+                   SET CBLT-AT-END TO TRUE
+           END-MOCK
+           RUN
+           EXPECT WS-TRACE TO BE 'OPEN FAILED'
+           EXPECT WS-STEP TO BE NUMERIC 1
+           EXPECT WS-COUNT TO BE ZEROS
+           VERIFY READ IN-FILE NEVER HAPPENED
+           VERIFY PARAGRAPH 1000-CHECK NEVER HAPPENED
+           VERIFY CLOSE IN-FILE NEVER HAPPENED
+           VERIFY STOP HAPPENED ONCE
+
+       TESTCASE 'GOBACK in the section: stops its paragraph and caller'
+      * Documented limit: 1100-TAIL still runs because WORK-PART falls
+      * through from 1000-CHECK to 1100-TAIL (WS-STEP ends up at 9).
+           MOVE "G" TO WS-MODE
+           RUN
+           EXPECT WS-TRACE TO BE 'GOBACK IN SECTION'
+           EXPECT WS-STEP TO BE NUMERIC 9
+           VERIFY STOP HAPPENED ONCE
+           VERIFY CLOSE IN-FILE NEVER HAPPENED
+           VERIFY PARAGRAPH 1100-TAIL HAPPENED ONCE
+
+       TESTCASE 'mocked paragraph with STOP: the original does not run'
+           MOCK PARAGRAPH 0000-START
+               PERFORM WORK-PART
+           END-MOCK
+           RUN
+           EXPECT WS-TRACE TO BE 'DETAIL DONE'
+           EXPECT WS-STEP TO BE NUMERIC 9
+           VERIFY STOP NEVER HAPPENED
+           VERIFY READ IN-FILE NEVER HAPPENED
+
+       TESTCASE 'empty file: AT END on the first read'
+           MOCK FILE IN-FILE
+               ON READ
+                   SET CBLT-AT-END TO TRUE
+           END-MOCK
+           RUN
+           EXPECT WS-COUNT TO BE ZEROS
+           EXPECT WS-EOF TO BE 'Y'
+           EXPECT WS-STEP TO BE NUMERIC 3
+           VERIFY STOP HAPPENED ONCE

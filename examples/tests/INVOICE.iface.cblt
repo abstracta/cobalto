@@ -1,0 +1,81 @@
+      * Interface tests of INVOICE: a file goes in (mocked), a report
+      * comes out (captured). RUN executes the whole original flow; the
+      * STOP RUN of the program ends the case, not the process.
+       TESTSUITE TSTIFACE 'INVOICE through its interface'
+       PROGRAM INVOICE
+
+       WORKING-STORAGE SECTION.
+       01  T-CAPTURED                PIC X(80).
+       01  T-HEADER                  PIC X(80).
+       01  T-LINES                   PIC 9(3).
+       01  T-AMOUNTS.
+           05  T-AMOUNT              PIC 9(7)V99 OCCURS 5 TIMES.
+
+       BEFORE-EACH
+           MOVE ZERO TO T-LINES T-AMOUNTS
+           MOVE SPACES TO T-CAPTURED T-HEADER
+           MOCK CLOCK
+               DATE '261106'
+           END-MOCK
+           MOCK FILE REPORT-FILE
+               ON WRITE
+                   ADD 1 TO T-LINES
+                   IF T-LINES = 1
+                       MOVE REPORT-REC TO T-HEADER
+                   ELSE
+                       MOVE REPORT-REC TO T-CAPTURED
+                   END-IF
+           END-MOCK
+       END-BEFORE
+
+       TESTCASE 'one customer: the record goes in, the line comes out'
+           MOCK FILE CUST-FILE
+               ON READ
+                   EVALUATE CBLT-READ-COUNT
+                       WHEN 1 MOVE "C009GAMMA     000123456" TO CUST-REC
+                       WHEN OTHER SET CBLT-AT-END TO TRUE
+                   END-EVALUATE
+           END-MOCK
+           RUN
+           EXPECT T-LINES TO BE NUMERIC 2
+           EXPECT T-HEADER TO BE 'INVOICING   261106'
+           EXPECT T-CAPTURED TO BE 'C009 GAMMA          987.64 PREMIUM'
+           EXPECT CBLT-STOPPED TO BE TRUE
+           VERIFY STOP HAPPENED ONCE
+           VERIFY CALL 'DISCOUNT' HAPPENED ONCE
+           VERIFY WRITE REPORT-FILE HAPPENED 2 TIMES
+           VERIFY READ CUST-FILE HAPPENED 2 TIMES
+
+       TESTCASE 'empty file: only the header'
+           MOCK FILE CUST-FILE
+               ON READ
+                   SET CBLT-AT-END TO TRUE
+           END-MOCK
+           RUN
+           EXPECT T-LINES TO BE NUMERIC 1
+           VERIFY CALL 'DISCOUNT' NEVER HAPPENED
+           VERIFY STOP HAPPENED ONCE
+
+       TESTCASE 'two customers: DISCOUNT gets each amount in order'
+           MOCK FILE CUST-FILE
+               ON READ
+                   EVALUATE CBLT-READ-COUNT
+                       WHEN 1 MOVE "C001ACME      000200000" TO CUST-REC
+                       WHEN 2 MOVE "C002BETA      000050000" TO CUST-REC
+                       WHEN OTHER SET CBLT-AT-END TO TRUE
+                   END-EVALUATE
+           END-MOCK
+           MOCK CALL 'DISCOUNT'
+               MOVE WS-AMOUNT TO T-AMOUNT(CBLT-CALL-COUNT)
+               EVALUATE CBLT-CALL-COUNT
+                   WHEN 1 MOVE 1600 TO WS-NET
+                   WHEN OTHER MOVE 450 TO WS-NET
+               END-EVALUATE
+               MOVE 'MOCKED' TO WS-CATEGORY
+           END-MOCK
+           RUN
+           EXPECT T-AMOUNT(1) TO BE NUMERIC 2000
+           EXPECT T-AMOUNT(2) TO BE NUMERIC 500
+           EXPECT T-CAPTURED TO BE 'C002 BETA           450.00 MOCKED'
+           EXPECT T-LINES TO BE NUMERIC 3
+           VERIFY CALL 'DISCOUNT' HAPPENED 2 TIMES

@@ -1,0 +1,266 @@
+      * In-program suite on LOANBTCH: the cases run inside a copy of the
+      * batch, with the master file, the transactions, the rejects, the
+      * clock and the call to LOANCALC mocked case by case. Two kinds of
+      * case live side by side on the same program:
+      *  - interface: the master file and the date go in, and only what
+      *    comes out through the files is checked (the first case). They
+      *    stay valid after a rewrite, even if the language changes.
+      *  - internal: they run a single paragraph and look at the
+      *    WORKING-STORAGE. They locate defects while the COBOL lives.
+      * It includes a case that fails because of a defect seeded in the
+      * program (see the header comment of src/LOANBTCH.cbl).
+       TESTSUITE TSTBATCH 'Loan settlement (in-program)'
+       PROGRAM LOANBTCH
+
+       WORKING-STORAGE SECTION.
+       01  WS-LAST-DEBIT             PIC X(60).
+       01  WS-LAST-REJECT            PIC X(60).
+       01  WS-DEBIT-WRITES           PIC 9(3).
+       01  WS-DEBIT-LINES.
+           05  WS-DEBIT-CAP          PIC X(60) OCCURS 10 TIMES.
+
+       BEFORE-EACH
+           MOVE ZERO TO WS-READ-COUNT WS-DEBIT-COUNT WS-REJECT-COUNT
+                        WS-SKIP-COUNT WS-LINE-COUNT WS-TOTAL-DEBIT
+                        WS-DEBIT-WRITES
+           MOVE SPACES TO WS-LAST-DEBIT WS-LAST-REJECT WS-DEBIT-LINES
+           MOVE "N" TO WS-EOF
+      * master file with two active loans; each case may redefine it
+           MOCK FILE LOAN-FILE
+               ON READ
+                   EVALUATE CBLT-READ-COUNT
+                       WHEN 1
+                           MOVE "PR000001" TO LOAN-ID
+                           MOVE "GARCIA" TO LOAN-CUSTOMER
+                           MOVE 100000 TO LOAN-PRINCIPAL
+                           MOVE 0.36 TO LOAN-ANNUAL-RATE
+                           MOVE 12 TO LOAN-TERM-MONTHS
+                           MOVE 20260131 TO LOAN-START-DATE
+                           MOVE "A" TO LOAN-STATUS
+                       WHEN 2
+                           MOVE "PR000002" TO LOAN-ID
+                           MOVE "LOPEZ" TO LOAN-CUSTOMER
+                           MOVE 250000 TO LOAN-PRINCIPAL
+                           MOVE 0.24 TO LOAN-ANNUAL-RATE
+                           MOVE 36 TO LOAN-TERM-MONTHS
+                           MOVE 20260215 TO LOAN-START-DATE
+                           MOVE "A" TO LOAN-STATUS
+                       WHEN OTHER
+                           SET CBLT-AT-END TO TRUE
+                   END-EVALUATE
+           END-MOCK
+           MOCK FILE DEBIT-FILE
+               ON WRITE
+                   ADD 1 TO WS-DEBIT-WRITES
+                   MOVE DEBIT-REC TO WS-LAST-DEBIT
+                   IF WS-DEBIT-WRITES <= 10
+                       MOVE DEBIT-REC TO WS-DEBIT-CAP(WS-DEBIT-WRITES)
+                   END-IF
+           END-MOCK
+           MOCK FILE REJECT-FILE
+               ON WRITE
+                   MOVE REJECT-REC TO WS-LAST-REJECT
+           END-MOCK
+       END-BEFORE
+
+       TESTCASE 'interface: master file goes in, transactions come out'
+      * Interface case: only the mocked master file and the date go in
+      * and only the output files are checked. RUN executes the whole
+      * original flow; its STOP RUN ends the case, not the process.
+           MOCK CLOCK
+               DATE '260301'
+           END-MOCK
+           RUN
+           VERIFY STOP HAPPENED ONCE
+           EXPECT WS-DEBIT-WRITES TO BE NUMERIC 4
+           EXPECT WS-DEBIT-CAP(1) TO BE 'SETTLEMENT  20260301'
+           EXPECT WS-DEBIT-CAP(2) TO CONTAIN 'PR000001 GARCIA'
+           EXPECT WS-DEBIT-CAP(2) TO CONTAIN '10046.21 20260228 INSTALLMENT'
+           EXPECT WS-DEBIT-CAP(3) TO CONTAIN 'PR000002 LOPEZ'
+           EXPECT WS-DEBIT-CAP(3) TO CONTAIN '9808.21 20260315'
+           EXPECT WS-DEBIT-CAP(4) TO CONTAIN 'CONTROL'
+           EXPECT WS-DEBIT-CAP(4) TO CONTAIN '19854.42'
+           EXPECT WS-LAST-REJECT TO BE SPACES
+           VERIFY CALL 'LOANCALC' HAPPENED 2 TIMES
+           VERIFY WRITE DEBIT-FILE HAPPENED 4 TIMES
+           VERIFY WRITE REJECT-FILE NEVER HAPPENED
+           VERIFY CLOSE LOAN-FILE HAPPENED ONCE
+
+      * The cases that follow are internal: they run a single paragraph
+      * and look at WORKING-STORAGE fields.
+       TESTCASE 'two active loans with the real LOANCALC'
+           PERFORM 2000-PROCESS
+           EXPECT WS-READ-COUNT TO BE NUMERIC 2
+           EXPECT WS-DEBIT-COUNT TO BE NUMERIC 2
+           EXPECT WS-REJECT-COUNT TO BE ZEROS
+      * 10046.21 (GARCIA) + 9808.21 (LOPEZ)
+           EXPECT WS-TOTAL-DEBIT TO BE NUMERIC 19854.42
+           EXPECT WS-LAST-DEBIT TO CONTAIN 'LOPEZ'
+           EXPECT WS-LAST-DEBIT TO CONTAIN '9808.21 20260315'
+           VERIFY CALL 'LOANCALC' HAPPENED 2 TIMES
+           VERIFY READ LOAN-FILE HAPPENED 3 TIMES
+           VERIFY WRITE DEBIT-FILE HAPPENED 2 TIMES
+           VERIFY WRITE REJECT-FILE NEVER HAPPENED
+           VERIFY PARAGRAPH 3000-END NEVER HAPPENED
+
+       TESTCASE 'mocked installment: the batch without the calculation'
+           MOCK CALL 'LOANCALC'
+               MOVE 1000 TO WS-L-INSTALLMENT
+               MOVE 20260301 TO WS-L-FIRST-DUE
+               MOVE "00" TO WS-L-RETURN-CODE
+           END-MOCK
+           PERFORM 2000-PROCESS
+           EXPECT WS-TOTAL-DEBIT TO BE NUMERIC 2000
+           EXPECT WS-LAST-DEBIT TO CONTAIN '1000.00 20260301'
+           VERIFY CALL 'LOANCALC' HAPPENED 2 TIMES
+           VERIFY PARAGRAPH 2200-WRITE-DEBIT HAPPENED 2 TIMES
+
+       TESTCASE 'LOANCALC rejects: the loan goes to rejects'
+           MOCK CALL 'LOANCALC'
+               EXPECT WS-L-PRINCIPAL TO BE GREATER THAN ZERO
+               MOVE "40" TO WS-L-RETURN-CODE
+           END-MOCK
+           PERFORM 2000-PROCESS
+           EXPECT WS-DEBIT-COUNT TO BE ZEROS
+           EXPECT WS-REJECT-COUNT TO BE NUMERIC 2
+           EXPECT WS-TOTAL-DEBIT TO BE ZEROS
+           EXPECT WS-LAST-REJECT TO CONTAIN 'PR000002 40'
+           EXPECT WS-LAST-REJECT TO CONTAIN 'INVALID START DATE'
+           VERIFY WRITE REJECT-FILE HAPPENED 2 TIMES
+           VERIFY WRITE DEBIT-FILE NEVER HAPPENED
+
+      * The four reject reasons, with the real LOANCALC: each one goes
+      * through its WHEN in the EVALUATE of 2300-WRITE-REJECT.
+       TESTCASE 'reject 10: zero principal'
+           MOCK FILE LOAN-FILE
+               ON READ
+                   IF CBLT-READ-COUNT = 1
+                       MOVE "PR000010" TO LOAN-ID
+                       MOVE "RUIZ" TO LOAN-CUSTOMER
+                       MOVE 0 TO LOAN-PRINCIPAL
+                       MOVE 0.36 TO LOAN-ANNUAL-RATE
+                       MOVE 12 TO LOAN-TERM-MONTHS
+                       MOVE 20260131 TO LOAN-START-DATE
+                       MOVE "A" TO LOAN-STATUS
+                   ELSE
+                       SET CBLT-AT-END TO TRUE
+                   END-IF
+           END-MOCK
+           PERFORM 2000-PROCESS
+           EXPECT WS-REJECT-COUNT TO BE NUMERIC 1
+           EXPECT WS-DEBIT-COUNT TO BE ZEROS
+           EXPECT WS-LAST-REJECT TO BE 'PR000010 10 ZERO PRINCIPAL'
+           VERIFY CALL 'LOANCALC' HAPPENED ONCE
+
+       TESTCASE 'reject 20: term out of range'
+           MOCK FILE LOAN-FILE
+               ON READ
+                   IF CBLT-READ-COUNT = 1
+                       MOVE "PR000020" TO LOAN-ID
+                       MOVE "RUIZ" TO LOAN-CUSTOMER
+                       MOVE 100000 TO LOAN-PRINCIPAL
+                       MOVE 0.36 TO LOAN-ANNUAL-RATE
+                       MOVE 400 TO LOAN-TERM-MONTHS
+                       MOVE 20260131 TO LOAN-START-DATE
+                       MOVE "A" TO LOAN-STATUS
+                   ELSE
+                       SET CBLT-AT-END TO TRUE
+                   END-IF
+           END-MOCK
+           PERFORM 2000-PROCESS
+           EXPECT WS-REJECT-COUNT TO BE NUMERIC 1
+           EXPECT WS-LAST-REJECT TO BE 'PR000020 20 TERM OUT OF RANGE'
+
+       TESTCASE 'reject 30: rate out of range'
+           MOCK FILE LOAN-FILE
+               ON READ
+                   IF CBLT-READ-COUNT = 1
+                       MOVE "PR000030" TO LOAN-ID
+                       MOVE "RUIZ" TO LOAN-CUSTOMER
+                       MOVE 100000 TO LOAN-PRINCIPAL
+                       MOVE 2.5 TO LOAN-ANNUAL-RATE
+                       MOVE 12 TO LOAN-TERM-MONTHS
+                       MOVE 20260131 TO LOAN-START-DATE
+                       MOVE "A" TO LOAN-STATUS
+                   ELSE
+                       SET CBLT-AT-END TO TRUE
+                   END-IF
+           END-MOCK
+           PERFORM 2000-PROCESS
+           EXPECT WS-REJECT-COUNT TO BE NUMERIC 1
+           EXPECT WS-LAST-REJECT TO BE 'PR000030 30 RATE OUT OF RANGE'
+
+       TESTCASE 'an unknown return code goes to rejects as uncataloged'
+      * LOANCALC does not return "99" today; the batch has to survive a
+      * new code anyway, so the call is mocked
+           MOCK CALL 'LOANCALC'
+               MOVE "99" TO WS-L-RETURN-CODE
+           END-MOCK
+           PERFORM 2000-PROCESS
+           EXPECT WS-REJECT-COUNT TO BE NUMERIC 2
+           EXPECT WS-LAST-REJECT TO BE 'PR000002 99 UNCATALOGED ERROR'
+
+       TESTCASE 'a closed loan is neither settled nor calculated'
+           MOCK FILE LOAN-FILE
+               ON READ
+                   IF CBLT-READ-COUNT = 1
+                       MOVE "PR000009" TO LOAN-ID
+                       MOVE "PEREZ" TO LOAN-CUSTOMER
+                       MOVE 5000 TO LOAN-PRINCIPAL
+                       MOVE "C" TO LOAN-STATUS
+                   ELSE
+                       SET CBLT-AT-END TO TRUE
+                   END-IF
+           END-MOCK
+           PERFORM 2000-PROCESS
+           EXPECT WS-SKIP-COUNT TO BE NUMERIC 1
+           EXPECT WS-DEBIT-COUNT TO BE ZEROS
+           EXPECT WS-LAST-DEBIT TO BE SPACES
+           VERIFY CALL 'LOANCALC' NEVER HAPPENED
+
+       TESTCASE 'empty master file: no transactions and no calls'
+           MOCK FILE LOAN-FILE
+               ON READ AT END
+           END-MOCK
+           PERFORM 2000-PROCESS
+           EXPECT WS-END-OF-FILE TO BE TRUE
+           EXPECT WS-READ-COUNT TO BE ZEROS
+           VERIFY READ LOAN-FILE HAPPENED ONCE
+           VERIFY CALL 'LOANCALC' NEVER HAPPENED
+
+       TESTCASE 'the header carries the process date with century'
+           MOCK CLOCK
+               DATE '260301'
+           END-MOCK
+           PERFORM 1000-INIT
+           EXPECT WS-PROCESS-DATE TO BE NUMERIC 260301
+           EXPECT WS-LAST-DEBIT TO CONTAIN 'SETTLEMENT  20260301'
+           EXPECT WS-DEBIT-STATUS TO BE '00'
+           VERIFY OPEN LOAN-FILE HAPPENED ONCE
+           VERIFY CLOCK HAPPENED ONCE
+
+       TESTCASE 'the control record counts only the transactions'
+      * Fails on purpose: the program reports WS-LINE-COUNT, which
+      * includes the header (seeded defect, see src/LOANBTCH.cbl).
+      * Expected 2, actual 3: this is what a failure looks like.
+           MOCK CLOCK
+               DATE '260301'
+           END-MOCK
+           MOCK CALL 'LOANCALC'
+               MOVE 1000 TO WS-L-INSTALLMENT
+               MOVE 20260401 TO WS-L-FIRST-DUE
+               MOVE "00" TO WS-L-RETURN-CODE
+           END-MOCK
+           PERFORM 1000-INIT
+           PERFORM 2000-PROCESS
+           PERFORM 3000-END
+           EXPECT WS-DEBIT-WRITES TO BE NUMERIC 4
+           EXPECT WS-LAST-DEBIT TO CONTAIN 'CONTROL'
+           EXPECT WS-LAST-DEBIT TO CONTAIN '2000.00'
+           EXPECT WS-T-COUNT TO BE NUMERIC 2
+           VERIFY CLOSE DEBIT-FILE HAPPENED ONCE
+
+       IGNORE
+       TESTCASE 'pending: same-day rerun (no rule yet)'
+           PERFORM 2000-PROCESS
+           EXPECT WS-DEBIT-COUNT TO BE ZEROS
