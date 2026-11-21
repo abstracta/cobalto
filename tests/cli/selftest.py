@@ -411,6 +411,42 @@ def json_error(p):
     p.write("tests/CALC.cblt", SUITE_EXT.replace("EXPECT WS-SUM TO BE NUMERIC 5", "EXPECT WS-SUM TO SMELL LIKE 5"))
 
 
+@scenario("JSON-E201", "test --json with a compile error: each error with its file and line, or the compiler "
+          "output when the profile cannot map it",
+          args=("test", "--json"), rc=2,
+          expect=('"code": "CBLT-E202"', '"details": [', '"code": "CBLT-E201"', '"file": "tests/CALC.cblt"',
+                  '"line": 12', '"generated": "build/', "CBLT-E201: compile error in tests/CALC.cblt:12"))
+def json_e201(p):
+    """The location of a compile error reaches the JSON and the JUnit
+    report, not only the console. With an error_regex that matches nothing,
+    the compiler's own output takes its place, whichever stream it wrote:
+    the stdout profile reports on standard output and leaves a notice on
+    standard error."""
+    e201(p)
+    p.profile_from("unmapped", "gnucobol", error_regex="^NEVER$")
+    p.profile_from("stdout", "gnucobol", compile="echo 'NOTICE: license checked' >&2; cobc -x -std=default "
+                   "-I {lib} {incl} -o {exe} {driver} {lib}/CBLTLIB.cbl {tests} {sources} 2>&1")
+    p.profile_from("stdout-unmapped", "stdout", error_regex="^NEVER$")
+
+    def error_of(profile):
+        r = subprocess.run([*CLI, "test", "--profile", profile, "--json"], cwd=p.root, capture_output=True,
+                           text=True, timeout=600)
+        assert r.returncode == 2, (profile, r.returncode, r.stderr)
+        return json.loads(r.stdout)["error"], r.stderr
+
+    error, console = error_of("unmapped")
+    assert "details" not in error and "WS-NOSUCH" in error["output"] and "WS-NOSUCH" in console, error
+    error, console = error_of("stdout")
+    assert [(d["file"], d["line"]) for d in error["details"]] == [("tests/CALC.cblt", 12)], error
+    error, console = error_of("stdout-unmapped")
+    assert "WS-NOSUCH" in error["output"] and "NOTICE: license checked" in error["output"], error
+    assert "WS-NOSUCH" in console and "NOTICE: license checked" in console, console
+    r = subprocess.run([*CLI, "test"], cwd=p.root, capture_output=True, text=True, timeout=600)
+    with open(os.path.join(p.root, "build", "junit.xml"), encoding="utf-8") as fh:
+        junit = fh.read()
+    assert r.returncode == 2 and "CBLT-E201: compile error in tests/CALC.cblt:12" in junit, junit
+
+
 @scenario("JSON-COV", "test --coverage --json: the coverage of the program inside the model",
           args=("test", "--coverage", "--json"), rc=0,
           expect=('"coverage": [', '"program": "CALC"', '"statements": {', '"missed_lines": ['))

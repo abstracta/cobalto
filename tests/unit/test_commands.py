@@ -10,7 +10,7 @@ import unittest
 import support  # noqa: F401  (puts src/ on sys.path)
 from support import TempDirTestCase
 
-from cobalto.commands import cmd_report, cmd_test
+from cobalto.commands import cmd_report, cmd_test, error_reports
 from cobalto.messages import CobaltoError
 
 OLD = "from an earlier run\n"
@@ -63,6 +63,18 @@ class ErrorReportsTest(TempDirTestCase):
         self.write("cblt.json", json.dumps({}))
         e = self.fails(cmd_test, "E101", profile="nosuch")
         self.assertEqual(e.run, self.results())
+
+    def test_the_details_of_a_build_failure_reach_results_json_and_junit(self):
+        details = [{"code": "CBLT-E201", "file": "tests/CALC.cblt", "line": 12,
+                    "generated": "build/TSTCALC.cbl:40", "message": "'WS-NOSUCH' is not defined"}]
+        with self.assertRaises(CobaltoError) as e:
+            with error_reports("build", "gnucobol"):
+                raise CobaltoError("E202", extra={"details": details}, rc=1)
+        run = self.results()
+        self.assertEqual(run["error"], {"code": "CBLT-E202", "message": "the build failed (exit 1)",
+                                        "details": details})
+        self.assertEqual(e.exception.run, run)
+        self.assertIn("CBLT-E201: compile error in tests/CALC.cblt:12", self.read("junit.xml"))
 
     def test_test_without_a_profile_reports_the_default_one(self):
         self.write("cblt.json", json.dumps({"tests": ["nosuch/*.cblt"]}))

@@ -19,7 +19,7 @@ from .remote import MANIFEST, clean_screen, read_manifest, run_remote
 from .reports import (render_console, report_coverage, write_json, write_junit,
                      write_sonar_tests)
 from .results import build_run, error_run, parse_results, read_records, reason_text, split_output
-from .runner import report_compile_errors, run_local, sh
+from .runner import compile_step, run_local
 
 
 @contextlib.contextmanager
@@ -34,7 +34,7 @@ def error_reports(build, profile=None):
     try:
         yield info
     except CobaltoError as e:
-        run = error_run(info["profile"], f"CBLT-{e.code}", e.message)
+        run = error_run(info["profile"], e.as_json())
         os.makedirs(build, exist_ok=True)
         write_junit(run, os.path.join(build, "junit.xml"))
         write_sonar_tests(run, os.path.join(build, "sonar-tests.xml"))
@@ -160,10 +160,7 @@ def cmd_debug(a):
     print(f"Cobalto {VERSION}  profile: {pname}  debugging {suite}")
     fmt = template_fields(cfg, gen)
     exe = fmt["exe"]
-    r = sh(prof["compile"].format(**fmt), "compile", a.verbose, capture=True)
-    if r.returncode != 0:
-        report_compile_errors(r, prof, gen.linemaps)
-        raise CobaltoError("E202", rc=r.returncode)
+    compile_step(prof, fmt, gen.linemaps, a.verbose)
     # launch.json: the Cobalto extension (COBOL names, breakpoints in the .cblt,
     # step by statement) and, as alternatives without it, plain lldb-dap and CodeLLDB
     program = "${workspaceFolder}/" + exe.replace(os.sep, "/")

@@ -360,7 +360,7 @@ class ErrorRunTest(unittest.TestCase):
     """The model of a run that stopped with an error before reading results."""
 
     def run_model(self):
-        return results.error_run("gnucobol", "CBLT-E202", "the build failed (exit 1)")
+        return results.error_run("gnucobol", {"code": "CBLT-E202", "message": "the build failed (exit 1)"})
 
     def test_it_is_not_ok_and_carries_the_error(self):
         run = self.run_model()
@@ -382,6 +382,14 @@ class ErrorRunTest(unittest.TestCase):
     def test_header_of_the_run(self):
         run = self.run_model()
         self.assertEqual((run["schema"], run["cobalto"], run["profile"]), (SCHEMA, VERSION, "gnucobol"))
+
+    def test_the_details_of_a_build_failure_go_with_the_error(self):
+        details = [{"code": "CBLT-E201", "file": "tests/CALC.cblt", "line": 12,
+                    "generated": "build/TSTCALC.cbl:40", "message": "'WS-NOSUCH' is not defined"}]
+        error = {"code": "CBLT-E202", "message": "the build failed (exit 1)", "details": details}
+        run = results.error_run("gnucobol", error)
+        self.assertEqual(run["error"], error)
+        self.assertIsNot(run["error"], error)
 
 
 class ReasonTextTest(unittest.TestCase):
