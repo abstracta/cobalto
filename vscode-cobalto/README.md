@@ -1,6 +1,6 @@
 # Cobalto for VS Code
 
-Run, measure and debug COBOL unit tests without leaving the editor. This is the VS Code extension for [Cobalto](https://github.com/abstracta/cobalto#readme), the open source unit testing tool for COBOL by Abstracta.
+Run, measure and debug COBOL unit tests without leaving the editor. This is the VS Code extension for [Cobalto](https://github.com/abstracta/cobalto#readme), the open source unit testing tool for COBOL by [Abstracta](https://abstracta.us).
 
 ![Cobalto in VS Code: a failing test case, a debugging session that steps into the program down to the defect, the fix, and the suites passing with coverage](https://raw.githubusercontent.com/abstracta/cobalto/main/vscode-cobalto/images/demo.gif)
 
