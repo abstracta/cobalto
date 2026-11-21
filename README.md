@@ -110,7 +110,7 @@ No version has been tagged yet. Until 1.0, the CLI, the suite language and the f
 | SQL mock | Covered by Cobalto's own tests, never run through a precompiler | Verified with a real precompiler |
 | Free-format sources | Parsed; in-program mode not verified with a compiler | In-program mode verified on a free-format program |
 | Installation | From a clone of the repository | A package on PyPI and tagged releases with a changelog |
-| VS Code extension | Verified on macOS; on Linux, only the debug adapter | Verified end to end on Linux and published on Open VSX |
+| VS Code extension | Verified on macOS; on Linux, only the debug adapter. Published on the Visual Studio Marketplace and Open VSX | Verified end to end on Linux |
 | Windows | Not tried | Verified, or documented as not supported |
 | Stability | Interfaces can change between commits | The CLI, the suite language and the results format frozen and versioned |
 
@@ -156,7 +156,7 @@ To start a project of your own:
 cobalto init /path/to/my/project
 ```
 
-To write a first suite step by step, see [First suite in 15 minutes](docs/reference.md#first-suite-in-15-minutes) in the reference. The VS Code extension is on the Marketplace as `abstracta.vscode-cobalto`; see [its README](vscode-cobalto/README.md).
+To write a first suite step by step, see [First suite in 15 minutes](docs/reference.md#first-suite-in-15-minutes) in the reference. The VS Code extension is `abstracta.vscode-cobalto` on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=abstracta.vscode-cobalto) and on [Open VSX](https://open-vsx.org/extension/abstracta/vscode-cobalto); see [its README](vscode-cobalto/README.md).
 
 ## Where things are
 

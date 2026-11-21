@@ -25,11 +25,13 @@ Verified on macOS arm64 with GnuCOBOL 3.2, the `lldb-dap` that ships with Xcode 
 
 ## Installation
 
-Install the extension from the Marketplace: search for "Cobalto" in the Extensions view, or from a terminal:
+Install the extension from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=abstracta.vscode-cobalto): search for "Cobalto" in the Extensions view, or from a terminal:
 
 ```bash
 code --install-extension abstracta.vscode-cobalto
 ```
+
+It is also on [Open VSX](https://open-vsx.org/extension/abstracta/vscode-cobalto), under the same name, for editors built on VS Code that install extensions from there, such as VSCodium. It has only been verified in VS Code.
 
 The extension runs the Cobalto CLI, which is installed separately. It needs Python 3.9 or later and, to run the suites on your machine, GnuCOBOL 3.x. From a clone of the [repository](https://github.com/abstracta/cobalto), in a virtual environment:
 
