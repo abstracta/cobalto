@@ -52,7 +52,7 @@ A local profile, for a compiler on the machine where the CLI runs:
 | `results_org` | The `ORGANIZATION` the driver declares for its results file: `LINE SEQUENTIAL` where the compiler has it, `SEQUENTIAL` otherwise |
 | `results_format` | How the CLI reads that file: `lines` for text lines, `fixed200` for 200-byte records with no separator |
 | `results_path` | What goes in the `ASSIGN TO` of the driver: a path, or a logical name that the `run` command maps to a file |
-| `error_regex` | Optional. A regular expression with the groups `file`, `line` and `msg` that matches a compile error, so that Cobalto reports it at the line of the `.cblt` that caused it. Without it, the compiler's output is shown as is |
+| `error_regex` | Optional. A regular expression with the groups `file`, `line` and `msg` that matches a compile error, so that Cobalto reports it at the line of the `.cblt` that caused it, also in the `details` of the JSON error object. Without it, the compiler's output is shown as is, and the JSON error object carries it in `output` |
 | `pre`, `post` | Optional commands before running and after it |
 
 If the compiler runs on another machine, start from a remote profile with `extends` and change what differs. `remote-sim` is the one to read first: it does everything a remote profile does against a local folder, and its two script templates are short.

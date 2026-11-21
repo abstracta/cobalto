@@ -411,6 +411,28 @@ def json_error(p):
     p.write("tests/CALC.cblt", SUITE_EXT.replace("EXPECT WS-SUM TO BE NUMERIC 5", "EXPECT WS-SUM TO SMELL LIKE 5"))
 
 
+@scenario("JSON-E201", "test --json with a compile error: each error with its file and line, or the compiler "
+          "output when the profile cannot map it",
+          args=("test", "--json"), rc=2,
+          expect=('"code": "CBLT-E202"', '"details": [', '"code": "CBLT-E201"', '"file": "tests/CALC.cblt"',
+                  '"line": 12', '"generated": "build/', "CBLT-E201: compile error in tests/CALC.cblt:12"))
+def json_e201(p):
+    """The location of a compile error reaches the JSON and the JUnit
+    report, not only the console. With an error_regex that matches nothing,
+    the compiler's own output takes its place."""
+    e201(p)
+    p.profile_from("unmapped", "gnucobol", error_regex="^NEVER$")
+    r = subprocess.run([*CLI, "test", "--profile", "unmapped", "--json"], cwd=p.root, capture_output=True,
+                       text=True, timeout=600)
+    error = json.loads(r.stdout)["error"]
+    assert r.returncode == 2 and "details" not in error, (r.returncode, error)
+    assert "WS-NOSUCH" in error["output"] and "WS-NOSUCH" in r.stderr, error
+    r = subprocess.run([*CLI, "test"], cwd=p.root, capture_output=True, text=True, timeout=600)
+    with open(os.path.join(p.root, "build", "junit.xml"), encoding="utf-8") as fh:
+        junit = fh.read()
+    assert r.returncode == 2 and "CBLT-E201: compile error in tests/CALC.cblt:12" in junit, junit
+
+
 @scenario("JSON-COV", "test --coverage --json: the coverage of the program inside the model",
           args=("test", "--coverage", "--json"), rc=0,
           expect=('"coverage": [', '"program": "CALC"', '"statements": {', '"missed_lines": ['))

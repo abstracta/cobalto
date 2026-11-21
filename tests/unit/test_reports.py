@@ -13,7 +13,7 @@ from cobalto.results import error_run
 
 class ErrorRunReportsTest(TempDirTestCase):
     def run_model(self):
-        return error_run("gnucobol", "CBLT-E202", 'the build failed (exit 1) & "quoted"')
+        return error_run("gnucobol", {"code": "CBLT-E202", "message": 'the build failed (exit 1) & "quoted"'})
 
     def junit(self, run):
         path = os.path.join(self.tmp, "junit.xml")
@@ -32,6 +32,29 @@ class ErrorRunReportsTest(TempDirTestCase):
         error = self.junit(self.run_model()).find("testsuite/testcase/error")
         self.assertEqual(error.get("type"), "CBLT-E202")
         self.assertEqual(error.get("message"), 'CBLT-E202: the build failed (exit 1) & "quoted"')
+
+    def test_junit_error_without_details_has_no_text(self):
+        error = self.junit(self.run_model()).find("testsuite/testcase/error")
+        self.assertIsNone(error.text)
+
+    def test_junit_error_of_a_build_failure_lists_each_compile_error(self):
+        run = self.run_model()
+        run["error"]["details"] = [
+            {"code": "CBLT-E201", "file": "tests/CALC.cblt", "line": 12, "generated": "build/TSTCALC.cbl:40",
+             "message": "'WS-NOSUCH' is not defined"},
+            {"code": "CBLT-E201", "file": "src/CALC.cbl", "line": 7, "generated": None,
+             "message": "syntax error, unexpected ]]>"}]
+        error = self.junit(run).find("testsuite/testcase/error")
+        self.assertEqual(error.text.splitlines(), [
+            "CBLT-E201: compile error in tests/CALC.cblt:12 (generated at build/TSTCALC.cbl:40): "
+            "'WS-NOSUCH' is not defined",
+            "CBLT-E201: compile error in src/CALC.cbl:7: syntax error, unexpected ]]>"])
+
+    def test_junit_error_of_a_build_failure_without_details_holds_the_compiler_output(self):
+        run = self.run_model()
+        run["error"]["output"] = "cobc: error: something the profile could not map\n"
+        error = self.junit(run).find("testsuite/testcase/error")
+        self.assertEqual(error.text, "cobc: error: something the profile could not map\n")
 
     def test_junit_of_a_run_without_error_has_no_cobalto_suite(self):
         run = self.run_model()

@@ -4,6 +4,7 @@ import json
 import os
 from xml.sax.saxutils import escape
 
+from .messages import compile_error_line
 from .results import reason_text
 
 def failure_text(case):
@@ -70,20 +71,28 @@ def xml_attr(value):
     return escape(str(value), {'"': "&quot;"})
 
 
+def cdata(text):
+    """Text as a CDATA section; a "]]>" inside it is split across two."""
+    return "<![CDATA[" + text.replace("]]>", "]]]]><![CDATA[>") + "]]>"
+
+
 def write_junit(run, path):
     """junit.xml: one testcase per test case. What the format has no place
     for goes in properties of the case: cobalto.kind (interface or internal)
     and, if it failed, cobalto.expected and cobalto.actual of the first
     assert that failed. A run that stopped with an error (see error_run)
     has a single testsuite, cobalto, with one testcase named after the
-    error code and an <error> with its message."""
+    error code and an <error> with its message; after a build failure, its
+    text lists the compile errors, one CBLT-E201 line each, or holds the
+    compiler's output."""
     L = ['<?xml version="1.0" encoding="UTF-8"?>', "<testsuites>"]
     error = run.get("error")
     if error:
+        text = "\n".join(compile_error_line(d) for d in error.get("details", [])) or error.get("output", "")
         L.append('  <testsuite name="cobalto" tests="1" failures="0" errors="1" skipped="0">')
         L.append(f'    <testcase name="{xml_attr(error["code"])}" classname="cobalto">')
         L.append(f'      <error message="{xml_attr(error["code"] + ": " + error["message"])}" '
-                 f'type="{xml_attr(error["code"])}"/>')
+                 f'type="{xml_attr(error["code"])}"' + (f">{cdata(text)}</error>" if text.strip() else "/>"))
         L.append("    </testcase>")
         L.append("  </testsuite>")
     for s in run["suites"]:

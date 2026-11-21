@@ -140,7 +140,7 @@ def main():
     except CobaltoError as e:
         print(e, file=sys.stderr)
         # 'test' and 'report' put on the error the model they wrote to results.json
-        messages.emit_json(getattr(e, "run", None) or {"error": {"code": f"CBLT-{e.code}", "message": e.message}})
+        messages.emit_json(getattr(e, "run", None) or {"error": e.as_json()})
         return 2
 
 

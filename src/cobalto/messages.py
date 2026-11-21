@@ -53,18 +53,32 @@ def msg(code, **kw):
 class CobaltoError(Exception):
     """An error from the catalog: its code (for example "E200") and the
     fields of its message. It can be raised anywhere; main turns it into the
-    message on stderr and exit code 2."""
+    message on stderr and exit code 2. extra holds fields that only the
+    JSON error object carries, such as the "details" of a build failure."""
 
-    def __init__(self, code, **kw):
+    def __init__(self, code, extra=None, **kw):
         super().__init__(code)
-        self.code, self.kw = code, kw
+        self.code, self.kw, self.extra = code, kw, dict(extra or {})
 
     @property
     def message(self):
         return MESSAGES[self.code].format(**self.kw)
 
+    def as_json(self):
+        """The error object of the JSON outputs: code, message and extra."""
+        return dict({"code": f"CBLT-{self.code}", "message": self.message}, **self.extra)
+
     def __str__(self):
         return f"CBLT-{self.code}: {self.message}"
+
+
+def compile_error_line(detail):
+    """The CBLT-E201 line of one compile error, as the console shows it:
+    detail is an entry of the "details" of a build failure."""
+    where = f"{detail['file']}:{detail['line']}"
+    if detail.get("generated"):
+        where += f" (generated at {detail['generated']})"
+    return msg("E201", where=where, detail=detail["message"])
 
 
 def warn(code, **kw):

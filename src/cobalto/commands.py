@@ -34,7 +34,7 @@ def error_reports(build, profile=None):
     try:
         yield info
     except CobaltoError as e:
-        run = error_run(info["profile"], f"CBLT-{e.code}", e.message)
+        run = error_run(info["profile"], e.as_json())
         os.makedirs(build, exist_ok=True)
         write_junit(run, os.path.join(build, "junit.xml"))
         write_sonar_tests(run, os.path.join(build, "sonar-tests.xml"))
@@ -162,8 +162,7 @@ def cmd_debug(a):
     exe = fmt["exe"]
     r = sh(prof["compile"].format(**fmt), "compile", a.verbose, capture=True)
     if r.returncode != 0:
-        report_compile_errors(r, prof, gen.linemaps)
-        raise CobaltoError("E202", rc=r.returncode)
+        raise CobaltoError("E202", extra=report_compile_errors(r, prof, gen.linemaps), rc=r.returncode)
     # launch.json: the Cobalto extension (COBOL names, breakpoints in the .cblt,
     # step by statement) and, as alternatives without it, plain lldb-dap and CodeLLDB
     program = "${workspaceFolder}/" + exe.replace(os.sep, "/")
