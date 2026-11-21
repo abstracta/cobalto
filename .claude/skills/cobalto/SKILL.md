@@ -12,7 +12,7 @@ The division of work is this: the agent reads the program and proposes the cases
 ## Before writing
 
 1. Locate the project: the folder that contains `cblt.json`. Every command runs from there. `cblt.json` declares where the sources are (`sources`), the suites (`tests`), the copybooks (`copybooks`) and the build profile.
-2. Locate the CLI: `cobalto` (or `cblt`, the same command under a shorter name) on the `PATH` or in the project's virtual environment (`.venv/bin/cobalto`). If it is not installed, install it from a clone of Cobalto with `python3 -m pip install <path to the clone>`. From here on it is written `cobalto`.
+2. Locate the CLI: `cobalto` (or `cblt`, the same command under a shorter name) on the `PATH` or in the project's virtual environment (`.venv/bin/cobalto`). If it is not installed, install it from a clone of Cobalto into a virtual environment (`python3 -m venv .venv`, then `.venv/bin/python3 -m pip install <path to the clone>`); Homebrew and recent Debian and Ubuntu do not let `pip` modify the system Python. From here on it is written `cobalto`.
 3. If there is no `cblt.json`, create the project with `cobalto init <folder>` and review `sources` and `copybooks`.
 4. Ask the parser how it reads the program: `cobalto parse src/PROGRAM.cbl`. It shows the paragraphs with their lines, the files, the `CALL`, file I/O, `EXEC` (SQL) and `ACCEPT` (clock) statements with their lines, the `WORKING-STORAGE` and `LINKAGE` items and the `PROCEDURE DIVISION USING` list. The names the suite uses must match that output, not a guess.
 5. Read the program's existing suite, if there is one, to cover what is missing instead of repeating cases. If the `tests/` folder does not exist, create it.
@@ -36,7 +36,7 @@ Rule of thumb: if the request is to protect a rewrite, a translation or a migrat
    ```
 
    Exit codes: 0 everything passes, 1 there are failures or errors, 2 configuration, DSL or compile error.
-3. Read the output and fix according to what it says (table below).
+3. Look at the exit code first, then read the console output and fix according to what it says (table below). With exit code 2 there are no results: the cause is in the `CBLT-E` lines of the output, and `build/results.json`, if there is one, is from an earlier run.
 4. Repeat until the suite compiles, has no unexplained failures and the program's coverage leaves no business branch unexecuted. With `-v` the output shows each case's `DISPLAY` lines and the reason for its classification.
 5. At the end run `cobalto test` without a filter, to confirm that the new suite did not break the others.
 
@@ -88,7 +88,7 @@ When finished, report with the output of the last run in view:
 
 - `cobalto test --profile gnucobol-ibm` (or `gnucobol-mf`): the same suite with another dialect. The cases that fail only there are differences in behavior between compilers, which is what a change of compiler or a migration needs to see. `cobalto profiles` lists the profiles.
 - `cobalto suggest --program X --dry-run`: builds the prompt that AI-assisted generation would send, in `build/ai/`, without sending it. Inside an agent session `suggest` is not needed: the agent writes the suite and uses `cobalto test` as the oracle.
-- Results as data: `cobalto test --json` writes the model of the run to standard output (totals, cases, expected and actual of each assert, coverage with `--coverage`) and leaves the same in `build/results.json`. Use that instead of interpreting the console.
+- Results as data: `cobalto test --json` writes the model of the run to standard output (totals, cases, expected and actual of each assert, coverage with `--coverage`) and sends the console to standard error. Use it when you need to compute over the results rather than read them, for example to compare the same suites under two profiles: redirect standard output to a file (`cobalto test --json > /tmp/run.json`) and read that, not `build/results.json`, which a run that ends with exit code 2 does not rewrite. With exit code 2 the JSON holds only an `error` object, and for a compile error it has no location: the `CBLT-E201` lines are on standard error.
 - Results for other tools: `build/junit.xml` and `build/sonar-tests.xml` on every run; with `--coverage`, also `build/lcov.info`, `build/coverage.xml` and `build/sonar-coverage.xml`.
 
 ## Third-party code

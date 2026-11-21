@@ -72,7 +72,7 @@ A mock applies only to the test case that declares it. Every other test case run
 
 **Coverage with any compiler.** With `--coverage`, the CLI instruments a copy of each program under test and measures statements, the branches of `IF`, `EVALUATE` and `SEARCH`, compound conditions by operand, and paragraphs, without gcov or a special runtime. The result goes to the console and to LCOV, Cobertura XML and SonarQube's generic format.
 
-**Results as data.** `cobalto test --json` writes the whole run as JSON: totals, every test case, the expected and actual value of each assert and, with `--coverage`, coverage. The same model is saved to `build/results.json`, so a script or an AI agent never has to read console text.
+**Results as data.** `cobalto test --json` writes the whole run as JSON: totals, every test case, the expected and actual value of each assert and, with `--coverage`, coverage. The same model is saved to `build/results.json`, so a script never has to read console text. [Using Cobalto from a coding agent](docs/coding-agents.md) covers the Claude Code skill, the loop it follows and which of these outputs an agent can rely on.
 
 **A draft suite proposed by AI.** `cobalto suggest` asks a model for a suite for a program, compiles it, runs it with coverage and feeds back what failed or was left uncovered, in rounds. The result is a draft of characterization tests for a person to review, and everything sent to the provider is kept in `build/ai/`.
 
@@ -167,9 +167,11 @@ To write a first suite step by step, see [First suite in 15 minutes](docs/refere
 | [docs/reference.md](docs/reference.md) | The reference for the DSL, the project file, profiles, coverage, debugging and AI-assisted drafts |
 | [docs/design.md](docs/design.md) | How Cobalto is built and why: the portable core, the results protocol, in-program mode, coverage, and the limits of each |
 | [docs/adding-a-compiler.md](docs/adding-a-compiler.md) | How to try Cobalto with another compiler and contribute its profile |
+| [docs/coding-agents.md](docs/coding-agents.md) | Using Cobalto from a coding agent: the Claude Code skill, its loop and the outputs an agent can rely on |
 | [vscode-cobalto/](vscode-cobalto/) | The VS Code extension |
 | [tests/](tests/) | Cobalto's own tests: `python3 tests/run.py` runs them all; its [README](tests/README.md) describes each layer |
 | [.claude/skills/cobalto/](.claude/skills/cobalto/) | A Claude Code skill for writing and running Cobalto suites |
+| [AGENTS.md](AGENTS.md) | Instructions for coding agents that work on Cobalto itself |
 | [docs/logo/](docs/logo/) | Logo |
 
 ## Contributing
