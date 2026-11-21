@@ -1,4 +1,5 @@
 """The CLI commands: test, report, debug, suggest, init, list, profiles and parse."""
+import contextlib
 import json
 import os
 import re
@@ -17,65 +18,89 @@ from .messages import MESSAGES, SCHEMA, VERSION, CobaltoError, emit_json, msg, w
 from .remote import MANIFEST, clean_screen, read_manifest, run_remote
 from .reports import (render_console, report_coverage, write_json, write_junit,
                      write_sonar_tests)
-from .results import build_run, parse_results, read_records, reason_text, split_output
+from .results import build_run, error_run, parse_results, read_records, reason_text, split_output
 from .runner import report_compile_errors, run_local, sh
+
+
+@contextlib.contextmanager
+def error_reports(build, profile=None):
+    """Wraps 'test' and 'report' once cblt.json is loaded. If the command
+    stops with an error, junit.xml, sonar-tests.xml and results.json are
+    rewritten with that error (see error_run), so that none of them is left
+    from an earlier run; the coverage reports are left as they are. The
+    model goes on the exception, for main to write with --json. Yields a
+    dict whose "profile" the command fills in when it learns it."""
+    info = {"profile": profile}
+    try:
+        yield info
+    except CobaltoError as e:
+        run = error_run(info["profile"], f"CBLT-{e.code}", e.message)
+        os.makedirs(build, exist_ok=True)
+        write_junit(run, os.path.join(build, "junit.xml"))
+        write_sonar_tests(run, os.path.join(build, "sonar-tests.xml"))
+        write_json(os.path.join(build, "results.json"), run)
+        e.run = run
+        raise
 
 
 def cmd_report(a):
     """Parses a results file returned by hand from the host."""
-    mpath = a.manifest or os.path.join("build", "remote", MANIFEST)
-    if not os.path.exists(mpath):
-        raise CobaltoError("E106", path=mpath)
-    man, gen = read_manifest(mpath)
     cfg = load_config(a.config, required=False)
-    prof = dict(cfg["profiles"].get(man["profile"], {}))
-    prof["results_format"] = man["results_format"]
-    prof.pop("coverage_glob", None)
     build = cfg["build"]
-    os.makedirs(build, exist_ok=True)
-    outputs, rc = {}, 0
-    if a.output:
-        with open(a.output, "rb") as fh:
-            screen = fh.read().decode("latin-1")
-        outputs = split_output(clean_screen(screen))
-        if "CBLT-RUN-OK" not in screen:
-            rc = 1
-    print(f"Cobalto {VERSION}  profile: {man['profile']}  (results returned from the host)")
-    print("Suites: " + ", ".join(s.id for s in gen.suites))
-    print(f"Results: {a.results}" + (f"  screen: {a.output}" if a.output else ""))
-    return report(gen, prof, {"build": build}, build, a.results, outputs, rc, a.verbose, man["profile"])
+    with error_reports(build) as info:
+        mpath = a.manifest or os.path.join("build", "remote", MANIFEST)
+        if not os.path.exists(mpath):
+            raise CobaltoError("E106", path=mpath)
+        man, gen = read_manifest(mpath)
+        info["profile"] = man["profile"]
+        prof = dict(cfg["profiles"].get(man["profile"], {}))
+        prof["results_format"] = man["results_format"]
+        prof.pop("coverage_glob", None)
+        os.makedirs(build, exist_ok=True)
+        outputs, rc = {}, 0
+        if a.output:
+            with open(a.output, "rb") as fh:
+                screen = fh.read().decode("latin-1")
+            outputs = split_output(clean_screen(screen))
+            if "CBLT-RUN-OK" not in screen:
+                rc = 1
+        print(f"Cobalto {VERSION}  profile: {man['profile']}  (results returned from the host)")
+        print("Suites: " + ", ".join(s.id for s in gen.suites))
+        print(f"Results: {a.results}" + (f"  screen: {a.output}" if a.output else ""))
+        return report(gen, prof, {"build": build}, build, a.results, outputs, rc, a.verbose, man["profile"])
 
 
 def cmd_test(a):
     cfg = load_config(a.config)
-    pname, prof = profile_of(cfg, a.profile)
     build = cfg["build"]
-    remote = "remote" in prof
-    coverage = bool(a.coverage or prof.get("coverage", False))
+    with error_reports(build, a.profile or cfg["profile"]):
+        pname, prof = profile_of(cfg, a.profile)
+        remote = "remote" in prof
+        coverage = bool(a.coverage or prof.get("coverage", False))
 
-    # 1 and 2. suites, sources (instrumented when coverage is on) and driver
-    gen = generate(cfg, prof, a.filter, coverage)
-    print(f"Cobalto {VERSION}  profile: {pname}" + ("  (remote)" if remote else "")
-          + ("  portable coverage" if coverage else ""))
-    print("Suites: " + ", ".join(s.id for s in gen.suites))
-    fmt = template_fields(cfg, gen)
+        # 1 and 2. suites, sources (instrumented when coverage is on) and driver
+        gen = generate(cfg, prof, a.filter, coverage)
+        print(f"Cobalto {VERSION}  profile: {pname}" + ("  (remote)" if remote else "")
+              + ("  portable coverage" if coverage else ""))
+        print("Suites: " + ", ".join(s.id for s in gen.suites))
+        fmt = template_fields(cfg, gen)
 
-    # 3 and 4. compile and run, here or on the host
-    if remote:
-        res = run_remote(cfg, prof, pname, a, fmt, gen)
-    else:
-        if a.generate_only:
-            print("Generated: " + " ".join(gen.gen_files + [gen.driver]) + ". Not compiled (--generate-only).")
+        # 3 and 4. compile and run, here or on the host
+        if remote:
+            res = run_remote(cfg, prof, pname, a, fmt, gen)
+        else:
+            if a.generate_only:
+                print("Generated: " + " ".join(gen.gen_files + [gen.driver]) + ". Not compiled (--generate-only).")
+                emit_json({"profile": pname, "ran": False, "suites": [s.id for s in gen.suites]})
+                return 0
+            res = run_local(prof, a, fmt, gen.linemaps)
+        if res is None:
             emit_json({"profile": pname, "ran": False, "suites": [s.id for s in gen.suites]})
             return 0
-        res = run_local(prof, a, fmt, gen.linemaps)
-    if res is None:
-        emit_json({"profile": pname, "ran": False, "suites": [s.id for s in gen.suites]})
-        return 0
-    results_path, outputs, rc = res
+        results_path, outputs, rc = res
 
-    # 5. report
-    return report(gen, prof, fmt, build, results_path, outputs, rc, a.verbose, pname)
+        # 5. report
+        return report(gen, prof, fmt, build, results_path, outputs, rc, a.verbose, pname)
 
 
 def report(gen, prof, fmt, build, results_path, outputs, rc, verbose, pname):
@@ -287,7 +312,9 @@ def cmd_suggest(a):
         if not os.path.exists(results_json):
             return r, None
         with open(results_json, encoding="utf-8") as fh:
-            return r, json.load(fh)
+            run = json.load(fh)
+        # a round that stopped with an error leaves the error in results.json
+        return r, (None if "error" in run else run)
 
     def round_feedback(r, run):
         """What goes back to the model: the test cases and the coverage of the

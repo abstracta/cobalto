@@ -356,6 +356,34 @@ class BuildRunTest(unittest.TestCase):
         self.assertEqual(run["missing_suites"], 0)
 
 
+class ErrorRunTest(unittest.TestCase):
+    """The model of a run that stopped with an error before reading results."""
+
+    def run_model(self):
+        return results.error_run("gnucobol", "CBLT-E202", "the build failed (exit 1)")
+
+    def test_it_is_not_ok_and_carries_the_error(self):
+        run = self.run_model()
+        self.assertFalse(run["ok"])
+        self.assertEqual(run["error"], {"code": "CBLT-E202", "message": "the build failed (exit 1)"})
+
+    def test_it_has_the_keys_of_a_run_that_read_its_results(self):
+        ran = BuildRunTest.run_model(BuildRunTest())
+        self.assertEqual(set(self.run_model()) - {"error"}, set(ran))
+        self.assertEqual(list(self.run_model()["totals"]), list(ran["totals"]))
+
+    def test_nothing_ran_and_the_error_counts_once(self):
+        run = self.run_model()
+        self.assertEqual((run["suites"], run["missing_suites"], run["binary_exit"], run["coverage"]),
+                         ([], 0, None, None))
+        self.assertEqual(run["totals"], {"cases": 0, "asserts": 0, "failed_asserts": 0, "failed_cases": 0,
+                                         "skipped": 0, "errors": 1, "interface": 0, "internal": 0})
+
+    def test_header_of_the_run(self):
+        run = self.run_model()
+        self.assertEqual((run["schema"], run["cobalto"], run["profile"]), (SCHEMA, VERSION, "gnucobol"))
+
+
 class ReasonTextTest(unittest.TestCase):
     def test_reason_with_a_line(self):
         self.assertEqual(results.reason_text({"construct": "PERFORM 2100-CALC", "line": 12}),

@@ -671,6 +671,47 @@ def e300(p):
     p.profile_from("no-run", "gnucobol", run="true")
 
 
+@scenario("ERR-REPORT", "a run that stops with exit code 2 writes the error to junit.xml, sonar-tests.xml and "
+          "results.json, and leaves the coverage reports as they were",
+          args=("test", "--coverage"), rc=2, expect=("CBLT-E201", "CBLT-E202"))
+def err_reports(p):
+    """None of the reports a CI step or a script reads is left from an
+    earlier run: after a compile error they hold the error, the same model
+    --json writes. The coverage reports keep the last run with coverage, and
+    --no-run, which is not a test run, does not touch any report."""
+    build = os.path.join(p.root, "build")
+
+    def run(*args, rc):
+        r = subprocess.run([*CLI, *args], cwd=p.root, capture_output=True, text=True, timeout=600)
+        assert r.returncode == rc, (args, r.returncode, r.stdout + r.stderr)
+        return r
+
+    def read(name):
+        with open(os.path.join(build, name), encoding="utf-8") as fh:
+            return fh.read()
+
+    base_project(p)
+    run("test", "--coverage", rc=0)
+    passed = read("results.json")
+    coverage = [read(n) for n in ("lcov.info", "coverage.xml", "sonar-coverage.xml")]
+    run("test", "--no-run", rc=0)
+    assert read("results.json") == passed, "--no-run changed results.json"
+    good = SUITE_EXT
+    e201(p)
+    r = run("test", "--coverage", "--json", rc=2)
+    doc = json.loads(read("results.json"))
+    assert json.loads(r.stdout) == doc, "results.json differs from the --json output"
+    assert doc["ok"] is False and doc["error"]["code"] == "CBLT-E202" and doc["suites"] == [], doc
+    assert 'testcase name="CBLT-E202" classname="cobalto"' in read("junit.xml"), read("junit.xml")
+    assert "<file" not in read("sonar-tests.xml"), read("sonar-tests.xml")
+    assert [read(n) for n in ("lcov.info", "coverage.xml", "sonar-coverage.xml")] == coverage
+    p.write("tests/CALC.cblt", good)
+    run("test", rc=0)
+    run("report", "--results", "CBLT_RESULTS.DAT", rc=2)
+    assert json.loads(read("results.json"))["error"]["code"] == "CBLT-E106"
+    e201(p)
+
+
 @scenario("ABORT", "a suite aborts: ERROR, the next one never starts (W301), exit 1", rc=1,
           expect=("ERROR", "CBLT-W301", "1 test(s) never started", "Errors: 2"))
 def abort(p):

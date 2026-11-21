@@ -38,9 +38,12 @@ paragraph and writes build/lcov.info, build/coverage.xml and
 build/sonar-coverage.xml (SonarQube generic format). build/junit.xml,
 build/sonar-tests.xml and build/results.json are written with or without
 coverage, by every run of 'test' or 'report' that reads its results file.
-A run that stops before that, with exit code 2 or with --no-run or
---generate-only, writes no report: the ones left in build/ are from an
-earlier run.
+A run that stops with an error once cblt.json is loaded (exit code 2)
+rewrites junit.xml, sonar-tests.xml and results.json with that error, so
+that none of them is left from an earlier run; with --json it writes the
+same model. The coverage reports are only written by a run with
+coverage, and a run with --no-run or --generate-only that ends without an
+error leaves every report as it was.
 
 debug: compiles the suite with the debug profile (-g) and leaves
 .vscode/launch.json ready for the Cobalto VS Code extension (or plain
@@ -136,7 +139,8 @@ def main():
         return COMMANDS[a.cmd](a)
     except CobaltoError as e:
         print(e, file=sys.stderr)
-        messages.emit_json({"error": {"code": f"CBLT-{e.code}", "message": e.message}})
+        # 'test' and 'report' put on the error the model they wrote to results.json
+        messages.emit_json(getattr(e, "run", None) or {"error": {"code": f"CBLT-{e.code}", "message": e.message}})
         return 2
 
 
