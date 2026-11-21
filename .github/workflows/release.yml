@@ -5,15 +5,12 @@
 #                         notes from CHANGELOG.md. The tag has to match the
 #                         version of the package, and the version needs a
 #                         dated section in CHANGELOG.md.
-#   Started by hand       on main, builds, checks and publishes to TestPyPI,
-#                         to rehearse a release. A version that is already
-#                         there is skipped.
 #   A pull request        that touches the packaging only builds and checks.
 #
-# Publishing uses Trusted Publishing (OIDC): the publishers set up on PyPI and
-# TestPyPI name this repository, this file and the environments "pypi" and
-# "testpypi", so no token is stored in the repository. Renaming this file or
-# an environment breaks them. The steps of a release are in CONTRIBUTING.md.
+# Publishing uses Trusted Publishing (OIDC): the publisher set up on PyPI names
+# this repository, this file and the environment "pypi", so no token is stored
+# in the repository. Renaming this file or the environment breaks it. The
+# steps of a release are in CONTRIBUTING.md.
 #
 # The VS Code extension is released by publish.yml. Its tags, vscode-vX.Y.Z,
 # do not start this workflow.
@@ -22,7 +19,6 @@ name: Release CLI
 on:
   push:
     tags: ["v[0-9]*"]
-  workflow_dispatch:
   pull_request:
     paths:
       - pyproject.toml
@@ -135,7 +131,7 @@ jobs:
 
   pypi:
     name: Publish to PyPI
-    if: github.ref_type == 'tag'
+    if: github.event_name == 'push' && github.ref_type == 'tag'
     needs: [build, verify]
     runs-on: ubuntu-24.04
     environment:
@@ -150,29 +146,9 @@ jobs:
           path: dist/
       - uses: pypa/gh-action-pypi-publish@v1.14.3
 
-  testpypi:
-    name: Publish to TestPyPI
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
-    needs: [build, verify]
-    runs-on: ubuntu-24.04
-    environment:
-      name: testpypi
-      url: https://test.pypi.org/project/cobalto/${{ needs.build.outputs.version }}/
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist
-          path: dist/
-      - uses: pypa/gh-action-pypi-publish@v1.14.3
-        with:
-          repository-url: https://test.pypi.org/legacy/
-          skip-existing: true
-
   github-release:
     name: GitHub release
-    if: github.ref_type == 'tag'
+    if: github.event_name == 'push' && github.ref_type == 'tag'
     needs: [build, pypi]
     runs-on: ubuntu-24.04
     permissions:
