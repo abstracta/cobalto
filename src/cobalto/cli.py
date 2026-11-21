@@ -36,7 +36,11 @@ and the in-program copies add counters; the driver dumps the records
 C|program|index|count to the results file, and the CLI reports by
 paragraph and writes build/lcov.info, build/coverage.xml and
 build/sonar-coverage.xml (SonarQube generic format). build/junit.xml,
-build/sonar-tests.xml and build/results.json are always written.
+build/sonar-tests.xml and build/results.json are written with or without
+coverage, by every run of 'test' or 'report' that reads its results file.
+A run that stops before that, with exit code 2 or with --no-run or
+--generate-only, writes no report: the ones left in build/ are from an
+earlier run.
 
 debug: compiles the suite with the debug profile (-g) and leaves
 .vscode/launch.json ready for the Cobalto VS Code extension (or plain
