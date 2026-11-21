@@ -33,7 +33,7 @@ npm run package
 ```
 
 ```bash
-code --install-extension vscode-cobalto-0.1.1.vsix
+code --install-extension vscode-cobalto-0.1.2.vsix
 ```
 
 VS Code does not replace an installed extension with a package of the same version: uninstall it first, or raise the version. After installing from a `.vsix`, reload the open windows (Developer: Reload Window).
