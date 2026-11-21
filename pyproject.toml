@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-authors = [{ name = "Abstracta" }]
+authors = [{ name = "Fabian Baptista" }, { name = "Abstracta" }]
 keywords = ["cobol", "unit-testing", "testing", "legacy", "gnucobol", "openvms"]
 classifiers = [
     "Development Status :: 4 - Beta",

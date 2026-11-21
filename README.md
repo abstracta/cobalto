@@ -6,7 +6,7 @@
 
 Cobalto lets a team test, debug and understand its COBOL with the compiler it already has: no new licenses and no vendor lock-in. Tests are written in a small language that reads like COBOL and run from the command line or from VS Code, where a suite can also be debugged in COBOL terms, with the program's own statements and data names. Results come out in JUnit, LCOV, Cobertura XML and SonarQube's generic format, so they fit into an existing CI pipeline, and an AI model can propose a first draft of a suite for a person to review.
 
-It is an open source project by [Abstracta](https://abstracta.us), released under Apache-2.0.
+It is an open source project by [Abstracta](https://abstracta.us), created by Fabian Baptista and released under Apache-2.0.
 
 ![Cobalto in VS Code: a failing test case, a debugging session that steps into the program down to the defect, the fix, and the suites passing with coverage](vscode-cobalto/images/demo.gif)
 
