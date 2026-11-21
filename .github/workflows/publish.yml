@@ -1,11 +1,12 @@
-# Publishes the VS Code extension to the Visual Studio Marketplace.
-# Started by hand from the Actions tab, on main only. It authenticates with
-# Trusted Publishing (OIDC): the Marketplace policy of the publisher names
-# this repository and this file, so no token is stored in the repository.
-# Renaming this file breaks the policy.
+# Publishes the VS Code extension to the Visual Studio Marketplace and to
+# Open VSX, the registry that editors built on VS Code use.
+# Started by hand from the Actions tab, on main only. Both jobs authenticate
+# with Trusted Publishing (OIDC): each registry has a policy that names this
+# repository and this file, so no token is stored in the repository.
+# Renaming this file breaks both policies.
 #
-# Before running it, raise "version" in vscode-cobalto/package.json: the
-# Marketplace rejects a version that is already published.
+# Before running it, raise "version" in vscode-cobalto/package.json: both
+# registries reject a version that is already published.
 name: Publish VS Code extension
 
 on:
@@ -19,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  extension:
+  marketplace:
     name: Visual Studio Marketplace
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
@@ -44,3 +45,29 @@ jobs:
       # Publishing runs lint and compile again (vscode:prepublish).
       - name: Publish
         run: npx --yes @vscode/vsce@4.1.1 publish --oidc --no-dependencies
+
+  open-vsx:
+    name: Open VSX
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: vscode-cobalto
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: vscode-cobalto/package-lock.json
+      - run: npm ci
+      - run: npm test
+      # --trusted-publishing fails instead of looking for a token when the
+      # job gets no OIDC identity.
+      - name: Publish
+        run: npx --yes ovsx@1.4.0 publish --trusted-publishing --no-dependencies
