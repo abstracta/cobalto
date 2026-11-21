@@ -8,7 +8,7 @@ This page covers Claude Code, the agent the repository ships a skill for: how to
 
 ### Install the CLI
 
-The agent runs the same `cobalto` command a person does, so install it first, as the [README](../README.md#try-it) describes: from a clone of the repository, in a virtual environment. The skill looks for the command on the `PATH` and in the project's `.venv/bin/`.
+The agent runs the same `cobalto` command a person does, so install it first, as the [README](../README.md#try-it) describes: from PyPI, in a virtual environment (`python3 -m pip install cobalto`). The skill looks for the command on the `PATH` and in the project's `.venv/bin/`.
 
 ### Install the skill
 

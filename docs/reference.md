@@ -8,15 +8,15 @@ To start with a hands-on walkthrough, see "First suite in 15 minutes" below.
 
 ## Installing
 
-Cobalto needs Python 3.9 or later and a COBOL compiler; the built-in local profiles use GnuCOBOL 3.x. From a clone of the repository, in a virtual environment:
+Cobalto needs Python 3.9 or later and a COBOL compiler; the built-in local profiles use GnuCOBOL 3.x. Install it from PyPI, in a virtual environment:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python3 -m pip install .
+python3 -m pip install cobalto
 ```
 
-The virtual environment keeps the install out of the system Python, which Homebrew and recent Debian and Ubuntu do not let `pip` modify. That installs the `cobalto` command and its alias `cblt`. The COBOL core and the built-in profiles travel inside the package, so a project only holds its own programs, its suites and a `cblt.json`. To work on Cobalto itself, `python3 -m pip install -e .` installs it from the working copy.
+The virtual environment keeps the install out of the system Python, which Homebrew and recent Debian and Ubuntu do not let `pip` modify. That installs the `cobalto` command and its alias `cblt`. The COBOL core and the built-in profiles travel inside the package, so a project only holds its own programs, its suites and a `cblt.json`. To install from a clone of the repository instead, run `python3 -m pip install .` from its root; to work on Cobalto itself, `python3 -m pip install -e .` installs it from the working copy.
 
 ## Running
 
