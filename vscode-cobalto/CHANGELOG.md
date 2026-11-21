@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- The extension is also published on Open VSX, for editors built on VS Code that do not use the Visual Studio Marketplace; the README says so.
+- More keywords and a banner color for the listing.
+
 ## 0.1.1
 
 - The Marketplace page is written for people who use the extension; how it works inside and how it is verified moved to `DEVELOPMENT.md` in the repository.
