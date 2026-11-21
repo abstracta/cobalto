@@ -36,7 +36,7 @@ Rule of thumb: if the request is to protect a rewrite, a translation or a migrat
    ```
 
    Exit codes: 0 everything passes, 1 there are failures or errors, 2 configuration, DSL or compile error.
-3. Look at the exit code first, then read the console output and fix according to what it says (table below). With exit code 2 there are no results: the cause is in the `CBLT-E` lines of the output, and `build/results.json`, if there is one, is from an earlier run.
+3. Look at the exit code first, then read the console output and fix according to what it says (table below). With exit code 2 there are no results: the cause is in the `CBLT-E` lines of the output. `build/results.json` and `build/junit.xml` hold only that error (with Cobalto 0.7.0, or when `cblt.json` cannot be read, they are from an earlier run).
 4. Repeat until the suite compiles, has no unexplained failures and the program's coverage leaves no business branch unexecuted. With `-v` the output shows each case's `DISPLAY` lines and the reason for its classification.
 5. At the end run `cobalto test` without a filter, to confirm that the new suite did not break the others.
 
@@ -88,7 +88,7 @@ When finished, report with the output of the last run in view:
 
 - `cobalto test --profile gnucobol-ibm` (or `gnucobol-mf`): the same suite with another dialect. The cases that fail only there are differences in behavior between compilers, which is what a change of compiler or a migration needs to see. `cobalto profiles` lists the profiles.
 - `cobalto suggest --program X --dry-run`: builds the prompt that AI-assisted generation would send, in `build/ai/`, without sending it. Inside an agent session `suggest` is not needed: the agent writes the suite and uses `cobalto test` as the oracle.
-- Results as data: `cobalto test --json` writes the model of the run to standard output (totals, cases, expected and actual of each assert, coverage with `--coverage`) and sends the console to standard error. Use it when you need to compute over the results rather than read them, for example to compare the same suites under two profiles: redirect standard output to a file (`cobalto test --json > /tmp/run.json`) and read that, not `build/results.json`, which a run that ends with exit code 2 does not rewrite. With exit code 2 the JSON holds only an `error` object, and for a compile error it has no location: the `CBLT-E201` lines are on standard error.
+- Results as data: `cobalto test --json` writes the model of the run to standard output (totals, cases, expected and actual of each assert, coverage with `--coverage`) and sends the console to standard error. Use it when you need to compute over the results rather than read them, for example to compare the same suites under two profiles: redirect standard output to a file (`cobalto test --json > /tmp/run.json`) and read that, not `build/results.json`, which the next run replaces. With exit code 2 the JSON has `"ok": false`, no suites and an `error` object, and for a compile error it has no location: the `CBLT-E201` lines are on standard error.
 - Results for other tools: `build/junit.xml` and `build/sonar-tests.xml` on every run; with `--coverage`, also `build/lcov.info`, `build/coverage.xml` and `build/sonar-coverage.xml`.
 
 ## Third-party code

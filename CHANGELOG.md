@@ -15,6 +15,7 @@ First release published on PyPI: `pip install cobalto` installs the `cobalto` co
 - Built-in profiles for GnuCOBOL (plain, with gcov coverage, for debugging, and with the IBM and Micro Focus dialects), a local simulator of a remote host, VSI COBOL on OpenVMS and a Micro Focus template. The profiles table of the [reference](docs/reference.md#profiles) says how far each one has been verified. A project adds or adjusts profiles in its `cblt.json`.
 - Remote profiles that build and run on another machine over ssh, and `--generate-only` with `cobalto report` for a host without ssh.
 - Structured outputs for programs and agents: `--json` in `test`, `report`, `parse`, `list` and `profiles`, and `build/results.json`, all with `schema` 1.
+- A run of `test` or `report` that stops with exit code 2 writes the error to `build/results.json`, `build/junit.xml` and `build/sonar-tests.xml`, with `"ok": false` and an `error` object in the JSON, instead of leaving the reports of an earlier run for a CI step or a script to read as this run's ([#20](https://github.com/abstracta/cobalto/issues/20)). With `--json`, standard output carries the same document. The coverage reports keep the last run with `--coverage`.
 - `cobalto debug` prepares a suite to be debugged in VS Code with COBOL names.
 - `cobalto suggest` asks an AI model for a draft suite, compiles it, runs it with coverage and feeds the results back in rounds, for a person to review.
 - Python 3.9 or later, standard library only.

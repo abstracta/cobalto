@@ -74,8 +74,18 @@ def write_junit(run, path):
     """junit.xml: one testcase per test case. What the format has no place
     for goes in properties of the case: cobalto.kind (interface or internal)
     and, if it failed, cobalto.expected and cobalto.actual of the first
-    assert that failed."""
+    assert that failed. A run that stopped with an error (see error_run)
+    has a single testsuite, cobalto, with one testcase named after the
+    error code and an <error> with its message."""
     L = ['<?xml version="1.0" encoding="UTF-8"?>', "<testsuites>"]
+    error = run.get("error")
+    if error:
+        L.append('  <testsuite name="cobalto" tests="1" failures="0" errors="1" skipped="0">')
+        L.append(f'    <testcase name="{xml_attr(error["code"])}" classname="cobalto">')
+        L.append(f'      <error message="{xml_attr(error["code"] + ": " + error["message"])}" '
+                 f'type="{xml_attr(error["code"])}"/>')
+        L.append("    </testcase>")
+        L.append("  </testsuite>")
     for s in run["suites"]:
         cases = s["cases"]
         nfail = sum(1 for c in cases if any(a["status"] == "failed" for a in c["asserts"]))
@@ -116,7 +126,8 @@ def write_sonar_tests(run, path):
     <testCase> per test case, with <failure>, <skipped> or <error>. Sonar
     requires a duration in milliseconds; Cobalto does not time each case
     and writes 0. Paths are relative to the folder of cblt.json, which must
-    be listed in sonar.tests."""
+    be listed in sonar.tests. A run that stopped with an error has no suite
+    file to put a test case in, and writes the report with no files."""
     by_file = {}
     for s in run["suites"]:
         by_file.setdefault(s["file"] or s["id"], []).append(s)

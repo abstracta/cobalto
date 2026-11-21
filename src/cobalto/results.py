@@ -165,3 +165,17 @@ def build_run(gen, parsed, outputs, rc, raw, profile):
             "ok": not (tot["failed_asserts"] or tot["errors"] or rc),
             "totals": tot, "suites": out, "missing_suites": missing,
             "stderr": outputs.get(("__stderr__", None), []), "warnings": warnings, "coverage": None}
+
+
+def error_run(profile, code, message):
+    """The model of a run that stopped with an error before it read any
+    results: a configuration, suite, build or fetch error. It has the shape
+    of build_run, with no suites, one error in the totals, "ok" false and
+    the error itself, so that a reader of results.json or junit.xml that
+    does not look at the exit code still sees that nothing passed, instead
+    of the reports of an earlier run."""
+    tot = {"cases": 0, "asserts": 0, "failed_asserts": 0, "failed_cases": 0, "skipped": 0, "errors": 1,
+           "interface": 0, "internal": 0}
+    return {"schema": SCHEMA, "cobalto": VERSION, "profile": profile, "binary_exit": None, "ok": False,
+            "totals": tot, "suites": [], "missing_suites": 0, "stderr": [], "warnings": [], "coverage": None,
+            "error": {"code": code, "message": message}}

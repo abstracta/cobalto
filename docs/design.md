@@ -268,6 +268,8 @@ The profile `remote-sim` runs the same mechanics against a local folder with `sh
 
 Everything the CLI reports comes from a single data structure built once per run: suites, test cases with their status and kind, asserts with expected and actual values, the output of each case, warnings, totals, and coverage. The console, `junit.xml`, `sonar-tests.xml` and `build/results.json` are renderings of it.
 
+A run that stops with an error before it reads any results still has a model: no suites, `ok` false and the error. It is rendered to the same files, so a reader that skips the exit code never takes the reports of an earlier run for this one. The coverage reports are left alone: they describe the last run with coverage, and a run that stopped measured nothing.
+
 This replaced an earlier arrangement in which each consumer formatted its own view and other tools read the console text. Two consumers showed why that does not hold: the VS Code extension and `cobalto suggest` both need exact expected and actual values, and text meant for people changes.
 
 The contracts that other programs can rely on:
