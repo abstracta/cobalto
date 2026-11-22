@@ -101,7 +101,7 @@ Running on any compiler that follows the standard is the design goal. The table 
 
 ## Roadmap
 
-No version has been tagged yet. Until 1.0, the CLI, the suite language and the file formats can still change. This is what is missing to get there:
+The first release is 0.8.0, on PyPI, and every release is listed in the [changelog](CHANGELOG.md). Until 1.0, the CLI, the suite language and the file formats can still change. This is what is missing to get there:
 
 | Area | Today | Needed for 1.0 |
 |---|---|---|
@@ -109,31 +109,29 @@ No version has been tagged yet. Until 1.0, the CLI, the suite language and the f
 | Remote builds | The ssh mechanics run against a local simulator | A build and a run over ssh on a real host |
 | SQL mock | Covered by Cobalto's own tests, never run through a precompiler | Verified with a real precompiler |
 | Free-format sources | Parsed; in-program mode not verified with a compiler | In-program mode verified on a free-format program |
-| Installation | From a clone of the repository | A package on PyPI and tagged releases with a changelog |
 | VS Code extension | On the Marketplace and Open VSX. Verified on macOS; on Linux, only the debug adapter | Verified end to end on Linux |
 | Windows | Not tried | Verified, or documented as not supported |
-| Stability | Interfaces can change between commits | The CLI, the suite language and the results format frozen and versioned |
+| Stability | Interfaces can change between minor versions, and every change is listed in the changelog | The CLI, the suite language and the results format frozen and versioned |
 
 The compiler rows are the ones where outside help counts most: see [Adding a compiler](docs/adding-a-compiler.md).
 
 ## Try it
 
-You need Python 3.9 or later and GnuCOBOL 3.x (`brew install gnucobol` on macOS, the `gnucobol3` package on Debian and Ubuntu). Install the CLI from a clone of this repository, in a virtual environment; it adds the `cobalto` command and its short alias `cblt`:
+You need Python 3.9 or later and GnuCOBOL 3.x (`brew install gnucobol` on macOS, the `gnucobol3` package on Debian and Ubuntu). Install the CLI from PyPI, in a virtual environment; it adds the `cobalto` command and its short alias `cblt`:
 
 ```bash
-git clone https://github.com/abstracta/cobalto.git
-cd cobalto
 python3 -m venv .venv
 source .venv/bin/activate
-python3 -m pip install .
+python3 -m pip install cobalto
 ```
 
 The virtual environment keeps the install out of the system Python, which Homebrew and recent Debian and Ubuntu do not let `pip` modify. The command is available while the environment is active.
 
-Then run the example project:
+The example project is in this repository. Clone it and run its suites:
 
 ```bash
-cd examples
+git clone https://github.com/abstracta/cobalto.git
+cd cobalto/examples
 ```
 
 ```bash
@@ -155,6 +153,8 @@ To start a project of your own:
 ```bash
 cobalto init /path/to/my/project
 ```
+
+To install from a clone instead, for example to try a change that is not released yet, run `python3 -m pip install .` from the root of the clone, in a virtual environment.
 
 To write a first suite step by step, see [First suite in 15 minutes](docs/reference.md#first-suite-in-15-minutes) in the reference. The VS Code extension is `abstracta.vscode-cobalto`, on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=abstracta.vscode-cobalto) and on [Open VSX](https://open-vsx.org/extension/abstracta/vscode-cobalto); see [its README](vscode-cobalto/README.md).
 

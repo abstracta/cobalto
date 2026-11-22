@@ -4,7 +4,7 @@ Changes to the Cobalto CLI: the commands, the suite language, the COBOL core, th
 
 Until 1.0, a minor version can change the CLI, the suite language and the file formats. Every such change is listed here. Each section is headed `## X.Y.Z - YYYY-MM-DD`, or `## X.Y.Z - Unreleased` while it is being prepared; the release workflow refuses to publish a version whose section has no date.
 
-## 0.8.0 - Unreleased
+## 0.8.0 - 2026-11-22
 
 First release published on PyPI: `pip install cobalto` installs the `cobalto` command and its short alias `cblt`.
 
