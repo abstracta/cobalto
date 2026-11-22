@@ -41,6 +41,8 @@ python3 -m pip install cobalto
 
 The extension finds that `.venv` by itself, in the project folder or in a folder above it. A `cobalto` on the `PATH` works too; for an installation elsewhere, set `cobalto.cliPath` to its `cobalto` executable.
 
+If the project is under version control, add `.venv/` and `build/` to its `.gitignore`: `.venv/` holds the installed CLI and `build/` the files each run writes, and both can be created again.
+
 On macOS, if `code` is not on the PATH, use `"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"`.
 
 The extension activates by itself when a folder that contains a `cblt.json` is opened (in subfolders too: if there are several projects, the Test Explorer shows them separately).

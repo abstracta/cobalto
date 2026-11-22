@@ -2,7 +2,7 @@
 
 ## 0.1.3
 
-- The installation steps install the Cobalto CLI from PyPI (`pip install cobalto`, published with CLI 0.8.0), in a virtual environment in the project folder, where the extension finds it by itself.
+- The installation steps install the Cobalto CLI from PyPI (`pip install cobalto`, published with CLI 0.8.0), in a virtual environment in the project folder, where the extension finds it by itself. They also say to keep `.venv/` and `build/` out of version control.
 - The messages shown when the CLI cannot be run or does not list the suites say how to install it from PyPI.
 - The search for projects skips `.venv` folders.
 
