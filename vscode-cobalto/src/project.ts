@@ -27,7 +27,7 @@ export function readProject(root: string): CobaltoProject | undefined {
 }
 
 export async function findProjects(): Promise<CobaltoProject[]> {
-  const files = await vscode.workspace.findFiles('**/cblt.json', '{**/node_modules/**,**/build/**,**/.git/**,**/.claude/**}', 50);
+  const files = await vscode.workspace.findFiles('**/cblt.json', '{**/node_modules/**,**/build/**,**/.git/**,**/.claude/**,**/.venv/**}', 50);
   const out: CobaltoProject[] = [];
   for (const f of files.sort((a, b) => a.fsPath.localeCompare(b.fsPath))) {
     const p = readProject(path.dirname(f.fsPath));
@@ -144,7 +144,7 @@ export function runCli(
     child.stdout.on('data', (c: Buffer) => feed(c, false));
     child.stderr.on('data', (c: Buffer) => feed(c, true));
     child.on('error', (e) => {
-      output.appendLine(`could not run ${cli}: ${e.message}. Install the Cobalto CLI or set cobalto.cliPath.`);
+      output.appendLine(`could not run ${cli}: ${e.message}. Install the Cobalto CLI (python3 -m pip install cobalto, in a virtual environment) or set cobalto.cliPath.`);
       resolve({ code: -1, stdout, stderr: stderr + e.message });
     });
     child.on('close', (code) => resolve({ code, stdout, stderr }));

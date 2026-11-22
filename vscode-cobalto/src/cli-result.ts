@@ -3,8 +3,10 @@
 /**
  * Whether `cobalto test` got to write its results. Exit 0 means every test
  * case passed and 1 that some failed; anything else (2 for an error of the
- * CLI, null when the process was killed) means it stopped before, and the
- * files in build/ belong to an earlier run.
+ * CLI, null when the process was killed) means it stopped before running the
+ * suites, and build/ holds no results of this run: since CLI 0.8.0 its
+ * reports carry the error, and before, or when cblt.json cannot be read, they
+ * belong to an earlier run.
  */
 export function wroteResults(code: number | null): boolean {
   return code === 0 || code === 1;
