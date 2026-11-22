@@ -2,6 +2,8 @@
 
 # Cobalto
 
+[![PyPI](https://img.shields.io/pypi/v/cobalto?label=PyPI)](https://pypi.org/project/cobalto/) [![Visual Studio Marketplace](https://vsmarketplacebadges.dev/version/abstracta.vscode-cobalto.svg)](https://marketplace.visualstudio.com/items?itemName=abstracta.vscode-cobalto) [![Open VSX](https://img.shields.io/open-vsx/v/abstracta/vscode-cobalto?label=Open%20VSX)](https://open-vsx.org/extension/abstracta/vscode-cobalto)
+
 **Unit testing for COBOL that runs wherever your COBOL runs.**
 
 Cobalto lets a team test, debug and understand its COBOL with the compiler it already has: no new licenses and no vendor lock-in. Tests are written in a small language that reads like COBOL and run from the command line or from VS Code, where a suite can also be debugged in COBOL terms, with the program's own statements and data names. Results come out in JUnit, LCOV, Cobertura XML and SonarQube's generic format, so they fit into an existing CI pipeline, and an AI model can propose a first draft of a suite for a person to review.
@@ -23,7 +25,7 @@ Cobalto is not a migration tool: it does not translate, convert or move code. A 
 - **Portable core.** The assertions, the test context and the driver that runs the suites are plain COBOL 85, fixed format, with no extensions.
 - **One profile per environment.** How to compile, link and run, where the results file goes, and whether the build happens on another machine over ssh, all live in a declarative profile. Adding a compiler means writing a profile, not touching the core.
 - **A CLI with no dependencies.** Python 3, standard library only. It discovers the suites, generates the test COBOL, compiles, runs, reads the results and writes the console output and the reports. It works on any machine with Python, with or without internet access.
-- **A VS Code extension.** Test Explorer, coverage in the gutter and debugging in COBOL terms (breakpoints in the suite, stepping by statement, conditions written in COBOL, changing values) on top of the same project and the same CLI.
+- **A VS Code extension.** Test Explorer, coverage in the gutter and debugging in COBOL terms (breakpoints in the suite, stepping by statement, conditions written in COBOL, changing values) on top of the same project and the same CLI. It is on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=abstracta.vscode-cobalto) and on [Open VSX](https://open-vsx.org/extension/abstracta/vscode-cobalto).
 
 ## What you can test
 
@@ -109,7 +111,7 @@ The first release is 0.8.0, on PyPI, and every release is listed in the [changel
 | Remote builds | The ssh mechanics run against a local simulator | A build and a run over ssh on a real host |
 | SQL mock | Covered by Cobalto's own tests, never run through a precompiler | Verified with a real precompiler |
 | Free-format sources | Parsed; in-program mode not verified with a compiler | In-program mode verified on a free-format program |
-| VS Code extension | On the Marketplace and Open VSX. Verified on macOS; on Linux, only the debug adapter | Verified end to end on Linux |
+| VS Code extension | On the [Marketplace](https://marketplace.visualstudio.com/items?itemName=abstracta.vscode-cobalto) and [Open VSX](https://open-vsx.org/extension/abstracta/vscode-cobalto). Verified on macOS; on Linux, only the debug adapter | Verified end to end on Linux |
 | Windows | Not tried | Verified, or documented as not supported |
 | Stability | Interfaces can change between minor versions, and every change is listed in the changelog | The CLI, the suite language and the results format frozen and versioned |
 
@@ -126,6 +128,14 @@ python3 -m pip install cobalto
 ```
 
 The virtual environment keeps the install out of the system Python, which Homebrew and recent Debian and Ubuntu do not let `pip` modify. The command is available while the environment is active.
+
+To work from VS Code, also install the extension, `abstracta.vscode-cobalto`. It is on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=abstracta.vscode-cobalto) and on [Open VSX](https://open-vsx.org/extension/abstracta/vscode-cobalto), where Cursor, VSCodium and other editors built on VS Code look for extensions:
+
+```bash
+code --install-extension abstracta.vscode-cobalto
+```
+
+The extension runs the same CLI. [Its README](vscode-cobalto/README.md) says where it looks for it.
 
 The example project is in this repository. Clone it and run its suites:
 
@@ -156,7 +166,7 @@ cobalto init /path/to/my/project
 
 To install from a clone instead, for example to try a change that is not released yet, run `python3 -m pip install .` from the root of the clone, in a virtual environment.
 
-To write a first suite step by step, see [First suite in 15 minutes](docs/reference.md#first-suite-in-15-minutes) in the reference. The VS Code extension is `abstracta.vscode-cobalto`, on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=abstracta.vscode-cobalto) and on [Open VSX](https://open-vsx.org/extension/abstracta/vscode-cobalto); see [its README](vscode-cobalto/README.md).
+To write a first suite step by step, see [First suite in 15 minutes](docs/reference.md#first-suite-in-15-minutes) in the reference.
 
 ## Where things are
 
