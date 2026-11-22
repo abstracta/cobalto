@@ -31,15 +31,15 @@ Search for "Cobalto" in the Extensions view. The extension is on the [Visual Stu
 code --install-extension abstracta.vscode-cobalto
 ```
 
-The extension runs the Cobalto CLI, which is installed separately. It needs Python 3.9 or later and, to run the suites on your machine, GnuCOBOL 3.x. From a clone of the [repository](https://github.com/abstracta/cobalto), in a virtual environment:
+The extension runs the Cobalto CLI, which is installed separately, from [PyPI](https://pypi.org/project/cobalto/). It needs Python 3.9 or later and, to run the suites on your machine, GnuCOBOL 3.x. In the project folder, the one with `cblt.json`, install it in a virtual environment:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python3 -m pip install .
+python3 -m pip install cobalto
 ```
 
-The extension finds that `.venv` by itself when the project is the clone or a folder inside it; for a project elsewhere, set `cobalto.cliPath` to the `cobalto` executable inside it.
+The extension finds that `.venv` by itself, in the project folder or in a folder above it. A `cobalto` on the `PATH` works too; for an installation elsewhere, set `cobalto.cliPath` to its `cobalto` executable.
 
 On macOS, if `code` is not on the PATH, use `"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"`.
 

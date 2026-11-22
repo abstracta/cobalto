@@ -60,7 +60,7 @@ export class CobaltoTests implements vscode.Disposable {
     }
     if (listings.some((l) => !l.ok) && !this.warnedNoCli) {
       this.warnedNoCli = true;
-      vscode.window.showWarningMessage('Cobalto: the CLI did not list the suites. Install the Cobalto CLI or set cobalto.cliPath.');
+      vscode.window.showWarningMessage('Cobalto: the CLI did not list the suites. If it is not installed: python3 -m pip install cobalto, in a virtual environment in the project folder, or set cobalto.cliPath.');
     }
     this.controller.items.replace([]);
     const single = projects.length === 1;
@@ -201,7 +201,7 @@ export class CobaltoTests implements vscode.Disposable {
         run.appendOutput(`\r\n[${path.basename(entry.project.root)}] cobalto ${args.join(' ')}\r\n`);
         const res = await runCli(entry.project, args, this.output, (line) => run.appendOutput(line + '\r\n'), token);
         if (!wroteResults(res.code)) {
-          // the CLI stopped before running: what is in build/ is from an earlier run
+          // the CLI stopped before running the suites: build/ holds no results of this run
           const reason = stopReason(res.stderr) || 'check the output in the Cobalto channel';
           for (const c of entry.cases) {
             this.lastResults.set(c.id, 'errored');
